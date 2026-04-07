@@ -132,7 +132,7 @@ export const OutputGallery: React.FC<OutputGalleryProps> = ({ results, onUpscale
                                     onClick={() => onUpscale(currentResult)}
                                     className="flex-1 bg-schiele-ink hover:bg-black text-white py-3 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-lg"
                                 >
-                                    <i className="fas fa-wand-magic-sparkles text-schiele-rust"></i> 放大 4K (36pts)
+                                    <i className="fas fa-wand-magic-sparkles text-schiele-rust"></i> 放大 4K
                                 </button>
                              </div>
 

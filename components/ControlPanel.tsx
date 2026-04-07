@@ -405,25 +405,31 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <div className="flex gap-2 p-1 bg-schiele-bg/50 rounded-xl border border-schiele-border">
                     <button 
                         onClick={() => updateRequest('modelVersion', ModelVersion.PRO)}
-                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+                        className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
                             request.modelVersion === ModelVersion.PRO 
                             ? 'bg-white text-schiele-ink shadow-sm' 
                             : 'text-gray-400 hover:text-gray-600'
                         }`}
                     >
-                        <i className={`fas fa-star ${request.modelVersion === ModelVersion.PRO ? 'text-yellow-500' : ''}`}></i>
-                        <span>NanoBanana PRO</span>
+                        <i className={`fas fa-star self-start mt-0.5 ${request.modelVersion === ModelVersion.PRO ? 'text-yellow-500' : ''}`}></i>
+                        <span className="flex flex-col items-start leading-tight text-left">
+                            <span>NanoBanana PRO</span>
+                            <span className={`text-[8px] font-mono ${request.modelVersion === ModelVersion.PRO ? 'text-schiele-secondary' : 'text-gray-300'}`}>gemini-3-pro-image-preview</span>
+                        </span>
                     </button>
                     <button 
                         onClick={() => updateRequest('modelVersion', ModelVersion.FLASH)}
-                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+                        className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
                             request.modelVersion === ModelVersion.FLASH 
                             ? 'bg-white text-schiele-ink shadow-sm' 
                             : 'text-gray-400 hover:text-gray-600'
                         }`}
                     >
-                        <i className={`fas fa-bolt ${request.modelVersion === ModelVersion.FLASH ? 'text-blue-500' : ''}`}></i>
-                        <span>NanoBanana FLASH</span>
+                        <i className={`fas fa-bolt self-start mt-0.5 ${request.modelVersion === ModelVersion.FLASH ? 'text-blue-500' : ''}`}></i>
+                        <span className="flex flex-col items-start leading-tight text-left">
+                            <span>NanoBanana 2</span>
+                            <span className={`text-[8px] font-mono ${request.modelVersion === ModelVersion.FLASH ? 'text-schiele-secondary' : 'text-gray-300'}`}>gemini-3.1-flash-image-preview</span>
+                        </span>
                     </button>
                 </div>
 

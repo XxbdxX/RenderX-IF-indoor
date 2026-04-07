@@ -3,9 +3,18 @@ import React from 'react';
 interface HeaderProps {
     onHistoryClick: () => void;
     hasApiKey: boolean;
+    onChooseExportFolder: () => void;
+    exportFolderName: string | null;
+    isFolderExportSupported: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onHistoryClick, hasApiKey }) => {
+export const Header: React.FC<HeaderProps> = ({
+  onHistoryClick,
+  hasApiKey,
+  onChooseExportFolder,
+  exportFolderName,
+  isFolderExportSupported,
+}) => {
   return (
     <header className="fixed top-0 z-50 w-full bg-schiele-surface/90 backdrop-blur-md border-b border-schiele-border py-4 px-6 md:px-12 flex items-center justify-between shadow-sm">
       <div className="flex items-center gap-3">
@@ -18,6 +27,14 @@ export const Header: React.FC<HeaderProps> = ({ onHistoryClick, hasApiKey }) => 
           <i className={`fas ${hasApiKey ? 'fa-circle-check' : 'fa-key'}`}></i>
           <span>{hasApiKey ? 'API 已配置' : '未配置 API'}</span>
         </div>
+        <button 
+            onClick={onChooseExportFolder}
+            className={`text-sm font-bold uppercase tracking-widest cursor-pointer transition-colors flex items-center gap-2 ${isFolderExportSupported ? 'text-schiele-secondary hover:text-schiele-ink' : 'text-gray-300'}`}
+            title={exportFolderName ? `当前导出目录：${exportFolderName}` : '选择导出目录'}
+        >
+            <i className={`fas ${exportFolderName ? 'fa-folder-open text-green-600' : 'fa-folder-plus'}`}></i>
+            <span className="hidden md:inline max-w-[150px] truncate">{exportFolderName || '导出目录'}</span>
+        </button>
         <button 
             onClick={onHistoryClick}
             className="text-sm font-bold uppercase tracking-widest text-schiele-secondary hover:text-schiele-ink cursor-pointer transition-colors flex items-center gap-2"

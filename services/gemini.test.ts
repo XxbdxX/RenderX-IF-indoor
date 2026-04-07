@@ -12,6 +12,20 @@ vi.mock('@google/genai', () => ({
 }));
 
 describe('generateRendering provider setup', () => {
+  const baseRequest = {
+    imageBase64: 'base64-image',
+    imageMimeType: 'image/png',
+    prompt: 'render this lobby',
+    style: RenderStyle.PHOTOREALISTIC,
+    timeOfDay: TimeOfDay.DAY,
+    aspectRatio: '1:1',
+    resolution: ImageResolution.RES_1K,
+    mode: GenerationMode.AUTO,
+    compositionLock: false,
+    schemeLock: true,
+    referenceImages: [],
+  };
+
   beforeEach(() => {
     generateContentMock.mockReset();
     googleGenAiMock.mockReset();
@@ -42,18 +56,8 @@ describe('generateRendering provider setup', () => {
   it('uses Vertex AI client options when provider is vertex-ai', async () => {
     const result = await generateRendering(
       {
-        imageBase64: 'base64-image',
-        imageMimeType: 'image/png',
-        prompt: 'render this lobby',
-        style: RenderStyle.PHOTOREALISTIC,
-        timeOfDay: TimeOfDay.DAY,
-        aspectRatio: '1:1',
-        resolution: ImageResolution.RES_1K,
+        ...baseRequest,
         modelVersion: ModelVersion.PRO,
-        mode: GenerationMode.AUTO,
-        compositionLock: false,
-        schemeLock: true,
-        referenceImages: [],
       },
       {
         provider: 'vertex-ai',
@@ -70,5 +74,25 @@ describe('generateRendering provider setup', () => {
       location: 'us-central1',
     });
     expect(result.imageUrl).toBe('data:image/png;base64,generated-image-data');
+    expect(generateContentMock).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'gemini-3-pro-image-preview' }),
+    );
+  });
+
+  it('uses the flash image preview model when flash is selected', async () => {
+    await generateRendering(
+      {
+        ...baseRequest,
+        modelVersion: ModelVersion.FLASH,
+      },
+      {
+        provider: 'google-ai-studio',
+        apiKey: 'ai-studio-key',
+      } as any,
+    );
+
+    expect(generateContentMock).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'gemini-3.1-flash-image-preview' }),
+    );
   });
 });

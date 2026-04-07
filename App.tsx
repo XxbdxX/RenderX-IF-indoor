@@ -10,6 +10,14 @@ import { GlobalSettings } from './components/GlobalSettings';
 import { generateRendering } from './services/gemini';
 import { saveHistoryItemToDb, getHistoryFromDb } from './services/historyDb';
 import {
+  clearPersistedExportDirectoryHandle,
+  ensureExportDirectoryPermission,
+  isDirectoryPickerSupported,
+  loadPersistedExportDirectoryHandle,
+  pickExportDirectory,
+  saveGeneratedImageToDirectory,
+} from './services/folderExport';
+import {
   clearStoredApiConfig,
   createEmptyApiConfig,
   getMissingApiConfigMessage,
@@ -49,6 +57,8 @@ function App() {
   const [apiConfig, setApiConfig] = useState<ApiProviderConfig>(() => createEmptyApiConfig());
   const [apiConfigDraft, setApiConfigDraft] = useState<ApiProviderConfig>(() => createEmptyApiConfig());
   const [isApiSettingsOpen, setIsApiSettingsOpen] = useState(false);
+  const [exportDirectoryHandle, setExportDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [exportDirectoryName, setExportDirectoryName] = useState<string | null>(null);
 
   // Request State
   const [sourceImageBase64, setSourceImageBase64] = useState<string | null>(null);
@@ -485,6 +495,7 @@ function App() {
   const resultSectionRef = useRef<HTMLDivElement>(null);
   const mainInputRef = useRef<HTMLDivElement>(null);
   const hasApiAccess = hasConfiguredApi(apiConfig);
+  const supportsFolderExport = isDirectoryPickerSupported();
 
   // --- Effects ---
   useEffect(() => {
@@ -493,6 +504,12 @@ function App() {
         setApiConfig(storedApiConfig);
         setApiConfigDraft(storedApiConfig);
         setIsApiSettingsOpen(!hasConfiguredApi(storedApiConfig));
+
+        const storedExportDirectory = await loadPersistedExportDirectoryHandle();
+        if (storedExportDirectory && await ensureExportDirectoryPermission(storedExportDirectory, false)) {
+          setExportDirectoryHandle(storedExportDirectory);
+          setExportDirectoryName(storedExportDirectory.name);
+        }
         
         const items = await getHistoryFromDb();
         setHistory(items);
@@ -539,6 +556,27 @@ function App() {
     setError(null);
     setSuccessMsg(`${getProviderLabel(savedConfig.provider)} API 已保存到本地浏览器`);
     setTimeout(() => setSuccessMsg(null), 2500);
+  };
+
+  const handleChooseExportFolder = async () => {
+    if (!supportsFolderExport) {
+      setError('当前浏览器不支持直接选择导出文件夹，请使用 Chromium 浏览器。');
+      return;
+    }
+
+    try {
+      const directoryHandle = await pickExportDirectory();
+      setExportDirectoryHandle(directoryHandle);
+      setExportDirectoryName(directoryHandle.name);
+      setError(null);
+      setSuccessMsg(`后续生成图将自动保存到文件夹：${directoryHandle.name}`);
+      setTimeout(() => setSuccessMsg(null), 2500);
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        return;
+      }
+      setError('选择导出文件夹失败，请重试。');
+    }
   };
 
   const handleImageSelected = (b64: string, mime: string, url: string, ratio: string) => {
@@ -724,6 +762,28 @@ function App() {
 
         setSessionResults(prev => prev.map(item => item.id === tempId ? { ...item, status: 'success', imageUrl: finalImageUrl } : item));
 
+        let savedFileName: string | null = null;
+        if (exportDirectoryHandle) {
+          try {
+            savedFileName = await saveGeneratedImageToDirectory(exportDirectoryHandle, finalImageUrl, {
+              id: tempId,
+              timestamp: Date.now(),
+              mode: request.mode,
+              resolution: requestResolution,
+              modelVersion: isUpscaleOnly ? ModelVersion.PRO : request.modelVersion,
+              style: request.style,
+            });
+          } catch (saveError) {
+            const stillAuthorized = await ensureExportDirectoryPermission(exportDirectoryHandle, false);
+            if (!stillAuthorized) {
+              setExportDirectoryHandle(null);
+              setExportDirectoryName(null);
+              await clearPersistedExportDirectoryHandle();
+            }
+            setError('渲染已完成，但自动保存到文件夹失败，请重新选择导出目录。');
+          }
+        }
+
         const newHistoryItem: HistoryItem = {
             id: tempId,
             timestamp: Date.now(),
@@ -736,16 +796,17 @@ function App() {
         setHistory(prev => [newHistoryItem, ...prev].slice(0, 50));
         await saveHistoryItemToDb(newHistoryItem);
 
+        const saveSuffix = savedFileName ? ' 已自动保存到导出文件夹。' : '';
         if (isUpscaleOnly) {
           if (result.didFallback) {
-            setSuccessMsg("✨ 4K 增强完成（PRO 繁忙，已自动切换 FLASH）。");
+            setSuccessMsg(`✨ 4K 增强完成（PRO 繁忙，已自动切换 NanoBanana 2）。${saveSuffix}`.trim());
           } else {
-            setSuccessMsg("✨ 4K 增强完成，图纸清晰度已提升。");
+            setSuccessMsg(`✨ 4K 增强完成，图纸清晰度已提升。${saveSuffix}`.trim());
           }
         } else if (result.didFallback) {
-          setSuccessMsg("✨ PRO 繁忙，已自动切换 FLASH 生成完成！请及时下载。");
+          setSuccessMsg(`✨ PRO 繁忙，已自动切换 NanoBanana 2 生成完成！${saveSuffix}`.trim());
         } else {
-          setSuccessMsg("✨ 渲染完成！系统不保存图纸，请及时下载。");
+          setSuccessMsg(`✨ 渲染完成！${savedFileName ? '已自动保存到导出文件夹。' : '请及时下载。'}`);
         }
 
     } catch (err: any) {
@@ -755,7 +816,7 @@ function App() {
         if (msg.includes("403") || msg.includes("Permission") || msg.includes("permission")) {
             msg = `API 权限不足。请检查 ${getProviderLabel(apiConfig.provider)} 的 Key 或项目权限是否有效。`;
         } else if (msg.includes("503") || msg.includes("UNAVAILABLE") || msg.toLowerCase().includes("high demand")) {
-            msg = "当前模型高负载（503 UNAVAILABLE）。建议切换到 FLASH，或稍后再试。";
+            msg = "当前模型高负载（503 UNAVAILABLE）。建议切换到 NanoBanana 2，或稍后再试。";
         }
         setError(msg);
     } finally {
@@ -783,6 +844,9 @@ function App() {
       <Header 
         onHistoryClick={() => setShowHistoryModal(!showHistoryModal)}
         hasApiKey={hasApiAccess}
+        onChooseExportFolder={() => { void handleChooseExportFolder(); }}
+        exportFolderName={exportDirectoryName}
+        isFolderExportSupported={supportsFolderExport}
       />
 
       {error && (
@@ -883,18 +947,18 @@ function App() {
             </div>
             <div className="max-w-4xl mx-auto">
                  <OutputGallery 
-                    results={sessionResults} 
-                    onUpscale={handleResultUpscale} 
-                    onUseAsInput={handleUseResultAsInput}
-                 />
+                     results={sessionResults} 
+                     onUpscale={handleResultUpscale} 
+                     onUseAsInput={handleUseResultAsInput}
+                  />
             </div>
         </section>
 
       </main>
 
       {showHistoryModal && (
-        <div className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex justify-end">
-            <div className="w-full max-w-md bg-white h-full shadow-2xl overflow-y-auto animate-fade-in p-6">
+        <div data-testid="history-backdrop" className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex justify-end" onClick={() => setShowHistoryModal(false)}>
+            <div className="w-full max-w-md bg-white h-full shadow-2xl overflow-y-auto animate-fade-in p-6" onClick={(event) => event.stopPropagation()}>
                 <div className="flex items-center justify-between mb-8">
                     <h2 className="text-xl font-bold text-schiele-ink">方案画廊</h2>
                     <button onClick={() => setShowHistoryModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">

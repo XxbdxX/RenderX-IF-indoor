@@ -59,4 +59,35 @@ describe('ControlPanel API settings layout', () => {
 
     expect(container.querySelector('.fa-coins')).toBeNull();
   });
+
+  it('shows the updated model labels and ids', () => {
+    render(
+      <ControlPanel
+        request={{
+          imageBase64: '',
+          imageMimeType: 'image/png',
+          prompt: '',
+          style: RenderStyle.PHOTOREALISTIC,
+          timeOfDay: TimeOfDay.DAY,
+          aspectRatio: '1:1',
+          resolution: ImageResolution.RES_1K,
+          modelVersion: ModelVersion.PRO,
+          mode: GenerationMode.AUTO,
+          compositionLock: false,
+          schemeLock: true,
+          referenceImages: [],
+        }}
+        setRequest={vi.fn()}
+        onGenerate={vi.fn()}
+        activeStandardRequests={0}
+        activeHeavyRequests={0}
+        hasApiAccess={true}
+      />,
+    );
+
+    expect(screen.getByText('NanoBanana PRO')).toBeInTheDocument();
+    expect(screen.getByText('NanoBanana 2')).toBeInTheDocument();
+    expect(screen.getByText('gemini-3-pro-image-preview')).toBeInTheDocument();
+    expect(screen.getByText('gemini-3.1-flash-image-preview')).toBeInTheDocument();
+  });
 });
