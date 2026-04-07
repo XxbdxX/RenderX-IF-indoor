@@ -13,9 +13,13 @@ import {
   clearPersistedExportDirectoryHandle,
   ensureExportDirectoryPermission,
   isDirectoryPickerSupported,
+  loadHistoryFromDirectoryHandle,
   loadPersistedExportDirectoryHandle,
+  migrateHistoryItemsToDirectory,
   pickExportDirectory,
-  saveGeneratedImageToDirectory,
+  persistExportDirectoryHandle,
+  revokeFolderHistoryObjectUrls,
+  saveHistoryItemToDirectory,
 } from './services/folderExport';
 import {
   clearStoredApiConfig,
@@ -494,8 +498,16 @@ function App() {
 
   const resultSectionRef = useRef<HTMLDivElement>(null);
   const mainInputRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HistoryItem[]>([]);
   const hasApiAccess = hasConfiguredApi(apiConfig);
   const supportsFolderExport = isDirectoryPickerSupported();
+
+  const replaceHistory = (nextHistory: HistoryItem[]) => {
+    const nextImageUrls = new Set(nextHistory.map((item) => item.imageUrl));
+    revokeFolderHistoryObjectUrls(historyRef.current.filter((item) => !nextImageUrls.has(item.imageUrl)));
+    historyRef.current = nextHistory;
+    setHistory(nextHistory);
+  };
 
   // --- Effects ---
   useEffect(() => {
@@ -507,15 +519,35 @@ function App() {
 
         const storedExportDirectory = await loadPersistedExportDirectoryHandle();
         if (storedExportDirectory && await ensureExportDirectoryPermission(storedExportDirectory, false)) {
-          setExportDirectoryHandle(storedExportDirectory);
-          setExportDirectoryName(storedExportDirectory.name);
+          try {
+            const folderHistory = await loadHistoryFromDirectoryHandle(storedExportDirectory);
+            setExportDirectoryHandle(storedExportDirectory);
+            setExportDirectoryName(storedExportDirectory.name);
+            replaceHistory(folderHistory);
+            return;
+          } catch {
+            await clearPersistedExportDirectoryHandle();
+          }
         }
         
         const items = await getHistoryFromDb();
-        setHistory(items);
+        replaceHistory(items);
     };
     init();
+
+    return () => {
+      revokeFolderHistoryObjectUrls(historyRef.current);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!successMsg) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setSuccessMsg(null), 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [successMsg]);
 
   const openApiSettings = () => {
     setApiConfigDraft(apiConfig);
@@ -539,7 +571,6 @@ function App() {
     setIsApiSettingsOpen(true);
     setError(null);
     setSuccessMsg('本地 API 配置已清除');
-    setTimeout(() => setSuccessMsg(null), 2500);
   };
 
   const handleSaveApiConfig = () => {
@@ -555,7 +586,6 @@ function App() {
     setIsApiSettingsOpen(false);
     setError(null);
     setSuccessMsg(`${getProviderLabel(savedConfig.provider)} API 已保存到本地浏览器`);
-    setTimeout(() => setSuccessMsg(null), 2500);
   };
 
   const handleChooseExportFolder = async () => {
@@ -566,11 +596,17 @@ function App() {
 
     try {
       const directoryHandle = await pickExportDirectory();
+      const migratedHistory = await migrateHistoryItemsToDirectory(directoryHandle, historyRef.current);
+      try {
+        await persistExportDirectoryHandle(directoryHandle);
+      } catch {
+        // Keep the directory for the current session even if persistence fails.
+      }
       setExportDirectoryHandle(directoryHandle);
       setExportDirectoryName(directoryHandle.name);
+      replaceHistory(migratedHistory);
       setError(null);
-      setSuccessMsg(`后续生成图将自动保存到文件夹：${directoryHandle.name}`);
-      setTimeout(() => setSuccessMsg(null), 2500);
+      setSuccessMsg(`后续生成图与参数已保存到文件夹：${directoryHandle.name}`);
     } catch (err: any) {
       if (err?.name === 'AbortError') {
         return;
@@ -597,23 +633,46 @@ function App() {
       setSourceAspectRatio('');
   };
 
-  const handleUseResultAsInput = (result: any) => {
-      if (result.imageUrl && result.imageUrl.startsWith('data:')) {
-          const match = result.imageUrl.match(/^data:(.+);base64,(.+)$/);
-          if (match) {
-            const img = new Image();
-            img.onload = () => {
-                const w = img.width;
-                const h = img.height;
-                const ratio = `${w}:${h}`;
-                
-                handleImageSelected(match[2], match[1], result.imageUrl, ratio);
-                setSuccessMsg("已将结果设为底图");
-                setTimeout(() => setSuccessMsg(null), 3000);
-                mainInputRef.current?.scrollIntoView({ behavior: 'smooth' });
-            };
-            img.src = result.imageUrl;
+  const convertUrlToDataUrl = async (imageUrl: string): Promise<string> => {
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+          throw new Error('无法读取历史图片数据。');
+      }
+      const blob = await response.blob();
+      return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+      });
+  };
+
+  const handleUseResultAsInput = async (result: any) => {
+      try {
+          if (!result.imageUrl) {
+              return;
           }
+
+          const dataUrl = result.imageUrl.startsWith('data:') ? result.imageUrl : await convertUrlToDataUrl(result.imageUrl);
+          const match = dataUrl.match(/^data:(.+);base64,(.+)$/);
+          if (!match) {
+              setError('无法读取历史图片数据。');
+              return;
+          }
+
+          const img = new Image();
+          img.onload = () => {
+              const w = img.width;
+              const h = img.height;
+              const ratio = `${w}:${h}`;
+              
+              handleImageSelected(match[2], match[1], dataUrl, ratio);
+              setSuccessMsg("已将结果设为底图");
+              mainInputRef.current?.scrollIntoView({ behavior: 'smooth' });
+          };
+          img.src = dataUrl;
+      } catch {
+          setError('无法读取历史图片数据。');
       }
   };
 
@@ -641,7 +700,6 @@ function App() {
                 
                 handleImageSelected(match[2], match[1], result, ratio);
                 setSuccessMsg("底图已替换");
-                setTimeout(() => setSuccessMsg(null), 2000);
             };
             img.src = result;
         }
@@ -762,17 +820,36 @@ function App() {
 
         setSessionResults(prev => prev.map(item => item.id === tempId ? { ...item, status: 'success', imageUrl: finalImageUrl } : item));
 
+        const newHistoryItem: HistoryItem = {
+            id: tempId,
+            timestamp: Date.now(),
+            imageUrl: finalImageUrl,
+            style: request.style,
+            prompt: finalPrompt,
+            mode: request.mode,
+            isAuto: request.mode === GenerationMode.AUTO,
+            resolution: requestResolution,
+            modelVersion: isUpscaleOnly ? ModelVersion.PRO : request.modelVersion,
+            timeOfDay: request.timeOfDay,
+            aspectRatio: overrideAspectRatio || sourceAspectRatio || effectiveAspectRatio,
+            compositionLock: isUpscaleOnly ? true : (request.compositionLock || enforceOriginalAspect),
+            schemeLock: isUpscaleOnly ? true : (request.schemeLock || enforceOriginalAspect),
+            referenceNote: request.referenceNote,
+            commercialEnhancement: request.commercialEnhancement,
+            landscapeEnhancement: request.landscapeEnhancement,
+            modelId: result.modelUsed,
+            storageSource: exportDirectoryHandle ? 'folder' : 'indexeddb',
+        };
+
         let savedFileName: string | null = null;
+        let savedMetaFileName: string | null = null;
         if (exportDirectoryHandle) {
           try {
-            savedFileName = await saveGeneratedImageToDirectory(exportDirectoryHandle, finalImageUrl, {
-              id: tempId,
-              timestamp: Date.now(),
-              mode: request.mode,
-              resolution: requestResolution,
-              modelVersion: isUpscaleOnly ? ModelVersion.PRO : request.modelVersion,
-              style: request.style,
-            });
+            const savedHistoryItem = await saveHistoryItemToDirectory(exportDirectoryHandle, newHistoryItem);
+            savedFileName = savedHistoryItem.imageFileName || null;
+            savedMetaFileName = savedHistoryItem.metaFileName || null;
+            newHistoryItem.imageFileName = savedHistoryItem.imageFileName;
+            newHistoryItem.metaFileName = savedHistoryItem.metaFileName;
           } catch (saveError) {
             const stillAuthorized = await ensureExportDirectoryPermission(exportDirectoryHandle, false);
             if (!stillAuthorized) {
@@ -784,19 +861,10 @@ function App() {
           }
         }
 
-        const newHistoryItem: HistoryItem = {
-            id: tempId,
-            timestamp: Date.now(),
-            imageUrl: finalImageUrl,
-            style: request.style,
-            prompt: finalPrompt,
-            mode: request.mode
-        };
-        
-        setHistory(prev => [newHistoryItem, ...prev].slice(0, 50));
+        replaceHistory([newHistoryItem, ...historyRef.current].slice(0, 50));
         await saveHistoryItemToDb(newHistoryItem);
 
-        const saveSuffix = savedFileName ? ' 已自动保存到导出文件夹。' : '';
+        const saveSuffix = savedFileName ? ` 已自动保存到导出文件夹${savedMetaFileName ? '并写入参数记录' : ''}。` : '';
         if (isUpscaleOnly) {
           if (result.didFallback) {
             setSuccessMsg(`✨ 4K 增强完成（PRO 繁忙，已自动切换 NanoBanana 2）。${saveSuffix}`.trim());

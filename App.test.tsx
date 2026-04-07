@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { getHistoryFromDb } from './services/historyDb';
 
@@ -18,6 +18,10 @@ describe('App API settings entry', () => {
     localStorage.clear();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders a floating API settings trigger', async () => {
     render(<App />);
 
@@ -33,7 +37,7 @@ describe('App API settings entry', () => {
   it('shows the current version and no longer renders a credit balance', async () => {
     render(<App />);
 
-    expect(await screen.findByText('V2.0.03')).toBeInTheDocument();
+    expect(await screen.findByText('V2.0.04')).toBeInTheDocument();
     expect(screen.queryByText('5000')).not.toBeInTheDocument();
   });
 
@@ -58,5 +62,27 @@ describe('App API settings entry', () => {
 
     await user.click(screen.getByTestId('history-backdrop'));
     expect(screen.queryByText('方案画廊')).not.toBeInTheDocument();
+  });
+
+  it('auto-hides success messages after five seconds', async () => {
+    vi.useFakeTimers();
+
+    render(<App />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('粘贴 AI Studio API Key'), { target: { value: 'demo-key' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存设置' }));
+
+    expect(screen.getByText('AI Studio API 已保存到本地浏览器')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(screen.queryByText('AI Studio API 已保存到本地浏览器')).not.toBeInTheDocument();
   });
 });

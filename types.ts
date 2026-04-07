@@ -60,6 +60,19 @@ export interface HistoryItem {
   prompt: string;
   mode: GenerationMode;
   isAuto?: boolean;
+  resolution?: ImageResolution;
+  modelVersion?: ModelVersion;
+  timeOfDay?: TimeOfDay;
+  aspectRatio?: string;
+  compositionLock?: boolean;
+  schemeLock?: boolean;
+  referenceNote?: string;
+  commercialEnhancement?: boolean;
+  landscapeEnhancement?: boolean;
+  imageFileName?: string;
+  metaFileName?: string;
+  modelId?: string;
+  storageSource?: 'indexeddb' | 'folder';
 }
 
 export interface GenerationRequest {
