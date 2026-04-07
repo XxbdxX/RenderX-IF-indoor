@@ -1,12 +1,11 @@
 import React from 'react';
 
 interface HeaderProps {
-    credits: number;
     onHistoryClick: () => void;
     hasApiKey: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ credits, onHistoryClick, hasApiKey }) => {
+export const Header: React.FC<HeaderProps> = ({ onHistoryClick, hasApiKey }) => {
   return (
     <header className="fixed top-0 z-50 w-full bg-schiele-surface/90 backdrop-blur-md border-b border-schiele-border py-4 px-6 md:px-12 flex items-center justify-between shadow-sm">
       <div className="flex items-center gap-3">
@@ -26,10 +25,6 @@ export const Header: React.FC<HeaderProps> = ({ credits, onHistoryClick, hasApiK
             <i className="fas fa-history"></i>
             <span className="hidden md:inline">方案库</span>
         </button>
-        <div className="flex items-center space-x-2 bg-white/50 px-4 py-1.5 rounded-full border border-schiele-border text-schiele-rust">
-            <i className="fas fa-circle-dollar text-xl text-yellow-500"></i>
-            <span className="text-lg font-bold text-schiele-ink ml-1">{credits}</span>
-        </div>
       </div>
     </header>
   );

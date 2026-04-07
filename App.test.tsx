@@ -27,4 +27,11 @@ describe('App API settings entry', () => {
 
     expect(await screen.findByRole('dialog', { name: 'API 设置面板' })).toBeInTheDocument();
   });
+
+  it('shows the current version and no longer renders a credit balance', async () => {
+    render(<App />);
+
+    expect(await screen.findByText('V2.0.02')).toBeInTheDocument();
+    expect(screen.queryByText('5000')).not.toBeInTheDocument();
+  });
 });

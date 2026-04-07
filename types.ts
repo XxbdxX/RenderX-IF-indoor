@@ -88,9 +88,3 @@ export interface GenerationResult {
   modelUsed?: string;
   didFallback?: boolean;
 }
-
-export const RESOLUTION_COSTS = {
-  [ImageResolution.RES_1K]: 8,
-  [ImageResolution.RES_2K]: 16,
-  [ImageResolution.RES_4K]: 36,
-};

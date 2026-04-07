@@ -438,7 +438,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                         }`}
                     >
                         <i className="fas fa-image"></i>
-                        <span>1K (8<i className="fas fa-coins text-[9px] ml-0.5"></i>)</span>
+                        <span>1K</span>
                     </button>
                     <button 
                         onClick={() => updateRequest('resolution', ImageResolution.RES_2K)}
@@ -449,7 +449,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                         }`}
                     >
                         <i className="fas fa-photo-video"></i>
-                        <span>2K (16<i className="fas fa-coins text-[9px] ml-0.5"></i>)</span>
+                        <span>2K</span>
                     </button>
                 </div>
             </div>

@@ -19,7 +19,7 @@ import {
   normalizeApiConfig,
   saveApiConfig,
 } from './services/apiConfig';
-import { MAX_CONCURRENT_REQUESTS } from './constants';
+import { APP_VERSION, MAX_CONCURRENT_REQUESTS } from './constants';
 import { 
     ApiProviderConfig,
     RenderStyle, 
@@ -27,7 +27,6 @@ import {
     ImageResolution, 
     GenerationRequest, 
     HistoryItem,
-    RESOLUTION_COSTS,
     GenerationMode,
     ModelVersion
 } from './types';
@@ -36,7 +35,6 @@ const UPSCALE_EDGE_SHARPEN_STRENGTH = 0.78;
 
 function App() {
   // --- App State ---
-  const [credits, setCredits] = useState<number>(5000);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   
@@ -491,9 +489,6 @@ function App() {
   // --- Effects ---
   useEffect(() => {
     const init = async () => {
-        const savedCredits = localStorage.getItem('renderx_credits');
-        if (savedCredits) setCredits(parseInt(savedCredits, 10));
-
         const storedApiConfig = loadStoredApiConfig();
         setApiConfig(storedApiConfig);
         setApiConfigDraft(storedApiConfig);
@@ -504,11 +499,6 @@ function App() {
     };
     init();
   }, []);
-
-  const updateCredits = (newAmount: number) => {
-    setCredits(newAmount);
-    localStorage.setItem('renderx_credits', newAmount.toString());
-  };
 
   const openApiSettings = () => {
     setApiConfigDraft(apiConfig);
@@ -660,8 +650,6 @@ function App() {
         return;
     }
 
-    const cost = RESOLUTION_COSTS[requestResolution];
-
     let effectiveAspectRatio = request.aspectRatio;
     let enforceOriginalAspect = false;
     if (effectiveAspectRatio === 'original') {
@@ -671,11 +659,6 @@ function App() {
         }
         enforceOriginalAspect = true;
         effectiveAspectRatio = 'free';
-    }
-
-    if (credits < cost) {
-        setError(`点数不足。需要 ${cost} 点，剩余 ${credits} 点。`);
-        return;
     }
 
     const tempId = uuidv4();
@@ -740,7 +723,6 @@ function App() {
           : processedImageUrl;
 
         setSessionResults(prev => prev.map(item => item.id === tempId ? { ...item, status: 'success', imageUrl: finalImageUrl } : item));
-        updateCredits(credits - cost);
 
         const newHistoryItem: HistoryItem = {
             id: tempId,
@@ -769,7 +751,7 @@ function App() {
     } catch (err: any) {
         setSessionResults(prev => prev.filter(item => item.id !== tempId)); 
         const rawMsg = String(err?.error?.message ?? err?.message ?? err ?? "");
-        let msg = rawMsg || "生成失败，未扣除点数。";
+        let msg = rawMsg || "生成失败，请稍后重试。";
         if (msg.includes("403") || msg.includes("Permission") || msg.includes("permission")) {
             msg = `API 权限不足。请检查 ${getProviderLabel(apiConfig.provider)} 的 Key 或项目权限是否有效。`;
         } else if (msg.includes("503") || msg.includes("UNAVAILABLE") || msg.toLowerCase().includes("high demand")) {
@@ -799,7 +781,6 @@ function App() {
   return (
     <div className="min-h-screen bg-schiele-bg text-schiele-text font-sans selection:bg-schiele-rust selection:text-white pb-24">
       <Header 
-        credits={credits} 
         onHistoryClick={() => setShowHistoryModal(!showHistoryModal)}
         hasApiKey={hasApiAccess}
       />
@@ -852,11 +833,11 @@ function App() {
                         <div className="absolute bottom-4 right-4 z-20">
                              <button 
                                 onClick={(e) => { e.stopPropagation(); void handleGenerate(true); }} 
-                                disabled={!sourceImageBase64 || !hasApiAccess || credits < RESOLUTION_COSTS[ImageResolution.RES_4K]}
-                                className={`bg-schiele-ink hover:bg-black text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg flex items-center space-x-2 transition-transform hover:scale-105 active:scale-95 ${!sourceImageBase64 || !hasApiAccess || credits < RESOLUTION_COSTS[ImageResolution.RES_4K] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                disabled={!sourceImageBase64 || !hasApiAccess}
+                                className={`bg-schiele-ink hover:bg-black text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg flex items-center space-x-2 transition-transform hover:scale-105 active:scale-95 ${!sourceImageBase64 || !hasApiAccess ? 'opacity-50 cursor-not-allowed' : ''}`}
                               >
                                  <i className="fas fa-wand-magic-sparkles text-schiele-rust"></i>
-                                <span>原图转 4K (36<i className="fas fa-coins ml-1 text-[10px]"></i>)</span>
+                                <span>原图转 4K</span>
                               </button>
                         </div>
                         
@@ -965,7 +946,7 @@ function App() {
         onClear={handleClearApiConfig}
       />
 
-      <div className="fixed bottom-3 left-4 text-[10px] text-gray-400/50 select-none pointer-events-none">V2.0</div>
+      <div className="fixed bottom-7 right-24 text-[10px] tracking-[0.18em] text-gray-400/70 select-none pointer-events-none">{APP_VERSION}</div>
 
     </div>
   );

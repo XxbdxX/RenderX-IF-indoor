@@ -31,4 +31,32 @@ describe('ControlPanel API settings layout', () => {
 
     expect(screen.queryByText('Gemini API Key')).not.toBeInTheDocument();
   });
+
+  it('does not show resolution coin costs anymore', () => {
+    const { container } = render(
+      <ControlPanel
+        request={{
+          imageBase64: '',
+          imageMimeType: 'image/png',
+          prompt: '',
+          style: RenderStyle.PHOTOREALISTIC,
+          timeOfDay: TimeOfDay.DAY,
+          aspectRatio: '1:1',
+          resolution: ImageResolution.RES_1K,
+          modelVersion: ModelVersion.PRO,
+          mode: GenerationMode.AUTO,
+          compositionLock: false,
+          schemeLock: true,
+          referenceImages: [],
+        }}
+        setRequest={vi.fn()}
+        onGenerate={vi.fn()}
+        activeStandardRequests={0}
+        activeHeavyRequests={0}
+        hasApiAccess={true}
+      />,
+    );
+
+    expect(container.querySelector('.fa-coins')).toBeNull();
+  });
 });
