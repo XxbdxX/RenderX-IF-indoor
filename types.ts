@@ -34,6 +34,12 @@ export enum GenerationMode {
   FREE = 'Free'
 }
 
+export enum ThinkingMode {
+  DEFAULT = 'default',
+  FAST = 'fast',
+  DEEP = 'deep'
+}
+
 export enum ApiProvider {
   AI_STUDIO = 'google-ai-studio',
   VERTEX_AI = 'vertex-ai'
@@ -73,6 +79,7 @@ export interface HistoryItem {
   metaFileName?: string;
   modelId?: string;
   storageSource?: 'indexeddb' | 'folder';
+  thinkingMode?: ThinkingMode;
 }
 
 export interface GenerationRequest {
@@ -94,6 +101,7 @@ export interface GenerationRequest {
   // New Enhancements
   commercialEnhancement?: boolean;
   landscapeEnhancement?: boolean;
+  thinkingMode?: ThinkingMode;
 }
 
 export interface GenerationResult {

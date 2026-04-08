@@ -40,7 +40,8 @@ import {
     GenerationRequest, 
     HistoryItem,
     GenerationMode,
-    ModelVersion
+    ModelVersion,
+    ThinkingMode,
 } from './types';
 const UPSCALE_DETAIL_STRENGTH = 0.5;
 const UPSCALE_EDGE_SHARPEN_STRENGTH = 0.78;
@@ -493,8 +494,9 @@ function App() {
       referenceImages: [],
       referenceNote: '',
       commercialEnhancement: false,
-      landscapeEnhancement: false
-  });
+      landscapeEnhancement: false,
+      thinkingMode: ThinkingMode.DEEP,
+   });
 
   const resultSectionRef = useRef<HTMLDivElement>(null);
   const mainInputRef = useRef<HTMLDivElement>(null);
@@ -837,6 +839,7 @@ function App() {
             referenceNote: request.referenceNote,
             commercialEnhancement: request.commercialEnhancement,
             landscapeEnhancement: request.landscapeEnhancement,
+            thinkingMode: request.thinkingMode,
             modelId: result.modelUsed,
             storageSource: exportDirectoryHandle ? 'folder' : 'indexeddb',
         };

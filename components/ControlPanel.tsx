@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { RenderStyle, TimeOfDay, GenerationRequest, ImageResolution, GenerationMode, ModelVersion } from '../types';
+import { RenderStyle, TimeOfDay, GenerationRequest, ImageResolution, GenerationMode, ModelVersion, ThinkingMode } from '../types';
 import { MAX_CONCURRENT_REQUESTS, STYLE_ICONS, TIME_ICONS, STYLE_LABELS, TIME_LABELS } from '../constants';
 
 interface ControlPanelProps {
@@ -41,6 +41,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const [showSavedList, setShowSavedList] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [newPromptName, setNewPromptName] = useState('');
+  const [isRenderSettingsOpen, setIsRenderSettingsOpen] = useState(false);
 
   useEffect(() => {
       const saved = localStorage.getItem('renderx_saved_prompts');
@@ -95,6 +96,14 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       updateRequest('isAuto', newMode === GenerationMode.AUTO);
   };
 
+  const handleModelVersionChange = (nextModel: ModelVersion) => {
+      setRequest((prev) => ({
+          ...prev,
+          modelVersion: nextModel,
+          thinkingMode: nextModel === ModelVersion.PRO ? ThinkingMode.DEEP : (prev.thinkingMode || ThinkingMode.DEFAULT),
+      }));
+  };
+
   const totalActiveRequests = activeStandardRequests + activeHeavyRequests;
   const isQueueBlocked = totalActiveRequests >= MAX_CONCURRENT_REQUESTS;
 
@@ -103,6 +112,22 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       if (totalActiveRequests > 0) return `加入列队 (${totalActiveRequests}/${MAX_CONCURRENT_REQUESTS})`;
       return "生成效果图";
   };
+
+  const aspectRatioSummary = request.aspectRatio === 'original'
+    ? '原图'
+    : request.aspectRatio === 'free'
+      ? '自由'
+      : request.aspectRatio;
+
+  const thinkingSummary = request.modelVersion === ModelVersion.PRO
+    ? '深度'
+    : request.thinkingMode === ThinkingMode.FAST
+      ? '快速'
+      : request.thinkingMode === ThinkingMode.DEEP
+        ? '深入'
+        : '默认';
+
+  const renderSettingsSummary = `${request.modelVersion === ModelVersion.PRO ? 'PRO' : 'N2'} · ${request.resolution} · ${aspectRatioSummary} · ${thinkingSummary}`;
 
   return (
     <div className={`flex flex-col h-full p-6 md:p-8 rounded-[24px] shadow-paper border transition-all duration-500 relative ${
@@ -182,51 +207,159 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </button>
       </div>
 
-      {/* Canvas Aspect Ratio Selector */}
-      <div className="mb-4">
-        <div className="mb-2"><label className="text-xs font-bold text-schiele-secondary uppercase">画布比例</label></div>
-        <div className="space-y-2">
-          <div className="grid grid-cols-12 gap-2">
-            {[
-              { value: 'free', label: '自由比例' },
-              { value: 'original', label: '跟随原图' },
-              { value: '1:1', label: '1:1' }
-            ].map((ratio) => (
-              <button 
-                key={ratio.value}
-                onClick={() => updateRequest('aspectRatio', ratio.value)}
-                className={`col-span-3 p-2 rounded-xl border text-center transition-all ${
-                  request.aspectRatio === ratio.value 
-                  ? 'border-schiele-rust bg-orange-50 text-schiele-rust' 
-                  : 'border-schiele-border text-gray-400 hover:bg-white hover:border-gray-300'
-                }`}
-              >
-                <div className="text-[10px] font-bold">{ratio.label}</div>
-              </button>
-            ))}
-            <div className="col-span-3"></div>
+      <div className="mb-4 rounded-2xl border border-schiele-border bg-white/75 shadow-sm overflow-hidden">
+        <button
+          type="button"
+          aria-label={`${isRenderSettingsOpen ? '收起' : '展开'}渲染设置`}
+          onClick={() => setIsRenderSettingsOpen((prev) => !prev)}
+          className="w-full px-4 py-3 flex items-center justify-between hover:bg-white transition-colors"
+        >
+          <span className="flex flex-col items-start text-left">
+            <span className="text-[10px] font-bold text-schiele-secondary uppercase">渲染设置</span>
+            <span className="text-sm font-bold text-schiele-ink">{renderSettingsSummary}</span>
+          </span>
+          <i className={`fas fa-chevron-${isRenderSettingsOpen ? 'up' : 'down'} text-xs text-schiele-secondary`}></i>
+        </button>
+
+        {isRenderSettingsOpen && (
+          <div className="px-4 pb-4 space-y-4 border-t border-schiele-border/70 bg-white/80 animate-fade-in">
+            <div className="pt-4">
+              <div className="mb-2"><label className="text-xs font-bold text-schiele-secondary uppercase">模型选择</label></div>
+              <div className="flex gap-2 p-1 bg-schiele-bg/50 rounded-xl border border-schiele-border">
+                <button
+                  onClick={() => handleModelVersionChange(ModelVersion.PRO)}
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    request.modelVersion === ModelVersion.PRO
+                      ? 'bg-white text-schiele-ink shadow-sm'
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  <i className={`fas fa-star self-start mt-0.5 ${request.modelVersion === ModelVersion.PRO ? 'text-yellow-500' : ''}`}></i>
+                  <span className="flex flex-col items-start leading-tight text-left">
+                    <span>NanoBanana PRO</span>
+                    <span className={`text-[8px] font-mono ${request.modelVersion === ModelVersion.PRO ? 'text-schiele-secondary' : 'text-gray-300'}`}>gemini-3-pro-image-preview</span>
+                  </span>
+                </button>
+                <button
+                  onClick={() => handleModelVersionChange(ModelVersion.FLASH)}
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    request.modelVersion === ModelVersion.FLASH
+                      ? 'bg-white text-schiele-ink shadow-sm'
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  <i className={`fas fa-bolt self-start mt-0.5 ${request.modelVersion === ModelVersion.FLASH ? 'text-blue-500' : ''}`}></i>
+                  <span className="flex flex-col items-start leading-tight text-left">
+                    <span>NanoBanana 2</span>
+                    <span className={`text-[8px] font-mono ${request.modelVersion === ModelVersion.FLASH ? 'text-schiele-secondary' : 'text-gray-300'}`}>gemini-3.1-flash-image-preview</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="text-xs font-bold text-schiele-secondary uppercase">思考强度</label>
+                {request.modelVersion === ModelVersion.FLASH && <span className="text-[10px] text-gray-400">NanoBanana 2 可调</span>}
+              </div>
+              {request.modelVersion === ModelVersion.PRO ? (
+                <div className="rounded-xl border border-schiele-border bg-schiele-bg/60 px-3 py-2 text-xs font-bold text-schiele-secondary">
+                  PRO 固定高思考
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: ThinkingMode.DEFAULT, label: '默认' },
+                    { value: ThinkingMode.FAST, label: '快速' },
+                    { value: ThinkingMode.DEEP, label: '深入' },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => updateRequest('thinkingMode', option.value)}
+                      className={`rounded-xl border py-2 text-xs font-bold transition-all ${
+                        (request.thinkingMode || ThinkingMode.DEFAULT) === option.value
+                          ? 'border-schiele-ink bg-schiele-ink text-white'
+                          : 'border-schiele-border bg-white text-gray-500 hover:border-gray-400'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="mb-2"><label className="text-xs font-bold text-schiele-secondary uppercase">分辨率</label></div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: ImageResolution.RES_1K, label: '1K', icon: 'fa-image' },
+                  { value: ImageResolution.RES_2K, label: '2K', icon: 'fa-photo-video' },
+                  { value: ImageResolution.RES_4K, label: '4K', icon: 'fa-expand' },
+                ].map((resolution) => (
+                  <button
+                    key={resolution.value}
+                    onClick={() => updateRequest('resolution', resolution.value)}
+                    className={`py-2 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                      request.resolution === resolution.value
+                        ? 'border-schiele-ink bg-schiele-ink text-white'
+                        : 'border-schiele-border bg-white text-gray-500 hover:border-gray-400'
+                    }`}
+                  >
+                    <i className={`fas ${resolution.icon}`}></i>
+                    <span>{resolution.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-2"><label className="text-xs font-bold text-schiele-secondary uppercase">画布比例</label></div>
+              <div className="space-y-2">
+                <div className="grid grid-cols-12 gap-2">
+                  {[
+                    { value: 'free', label: '自由比例' },
+                    { value: 'original', label: '跟随原图' },
+                    { value: '1:1', label: '1:1' }
+                  ].map((ratio) => (
+                    <button
+                      key={ratio.value}
+                      onClick={() => updateRequest('aspectRatio', ratio.value)}
+                      className={`col-span-3 p-2 rounded-xl border text-center transition-all ${
+                        request.aspectRatio === ratio.value
+                          ? 'border-schiele-rust bg-orange-50 text-schiele-rust'
+                          : 'border-schiele-border text-gray-400 hover:bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-[10px] font-bold">{ratio.label}</div>
+                    </button>
+                  ))}
+                  <div className="col-span-3"></div>
+                </div>
+                <div className="grid grid-cols-12 gap-2">
+                  {[
+                    { value: '16:9', label: '16:9' },
+                    { value: '9:16', label: '9:16' },
+                    { value: '4:3', label: '4:3' },
+                    { value: '3:4', label: '3:4' }
+                  ].map((ratio) => (
+                    <button
+                      key={ratio.value}
+                      onClick={() => updateRequest('aspectRatio', ratio.value)}
+                      className={`col-span-3 p-2 rounded-xl border text-center transition-all ${
+                        request.aspectRatio === ratio.value
+                          ? 'border-schiele-rust bg-orange-50 text-schiele-rust'
+                          : 'border-schiele-border text-gray-400 hover:bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-[10px] font-bold">{ratio.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-12 gap-2">
-            {[
-              { value: '16:9', label: '16:9' },
-              { value: '9:16', label: '9:16' },
-              { value: '4:3', label: '4:3' },
-              { value: '3:4', label: '3:4' }
-            ].map((ratio) => (
-              <button 
-                key={ratio.value}
-                onClick={() => updateRequest('aspectRatio', ratio.value)}
-                className={`col-span-3 p-2 rounded-xl border text-center transition-all ${
-                  request.aspectRatio === ratio.value 
-                  ? 'border-schiele-rust bg-orange-50 text-schiele-rust' 
-                  : 'border-schiele-border text-gray-400 hover:bg-white hover:border-gray-300'
-                }`}
-              >
-                <div className="text-[10px] font-bold">{ratio.label}</div>
-              </button>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-6 custom-scrollbar pr-2">
@@ -399,66 +532,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 </div>
             </div>
             
-            {/* Model & Resolution Group */}
-            <div className="space-y-3 mt-4">
-                {/* Model Selector */}
-                <div className="flex gap-2 p-1 bg-schiele-bg/50 rounded-xl border border-schiele-border">
-                    <button 
-                        onClick={() => updateRequest('modelVersion', ModelVersion.PRO)}
-                        className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
-                            request.modelVersion === ModelVersion.PRO 
-                            ? 'bg-white text-schiele-ink shadow-sm' 
-                            : 'text-gray-400 hover:text-gray-600'
-                        }`}
-                    >
-                        <i className={`fas fa-star self-start mt-0.5 ${request.modelVersion === ModelVersion.PRO ? 'text-yellow-500' : ''}`}></i>
-                        <span className="flex flex-col items-start leading-tight text-left">
-                            <span>NanoBanana PRO</span>
-                            <span className={`text-[8px] font-mono ${request.modelVersion === ModelVersion.PRO ? 'text-schiele-secondary' : 'text-gray-300'}`}>gemini-3-pro-image-preview</span>
-                        </span>
-                    </button>
-                    <button 
-                        onClick={() => updateRequest('modelVersion', ModelVersion.FLASH)}
-                        className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
-                            request.modelVersion === ModelVersion.FLASH 
-                            ? 'bg-white text-schiele-ink shadow-sm' 
-                            : 'text-gray-400 hover:text-gray-600'
-                        }`}
-                    >
-                        <i className={`fas fa-bolt self-start mt-0.5 ${request.modelVersion === ModelVersion.FLASH ? 'text-blue-500' : ''}`}></i>
-                        <span className="flex flex-col items-start leading-tight text-left">
-                            <span>NanoBanana 2</span>
-                            <span className={`text-[8px] font-mono ${request.modelVersion === ModelVersion.FLASH ? 'text-schiele-secondary' : 'text-gray-300'}`}>gemini-3.1-flash-image-preview</span>
-                        </span>
-                    </button>
-                </div>
-
-                {/* Resolution Selector */}
-                <div className="flex space-x-2">
-                    <button 
-                        onClick={() => updateRequest('resolution', ImageResolution.RES_1K)}
-                        className={`flex-1 py-2 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                            request.resolution === ImageResolution.RES_1K 
-                            ? 'border-schiele-ink bg-schiele-ink text-white' 
-                            : 'border-schiele-border bg-white text-gray-500 hover:border-gray-400'
-                        }`}
-                    >
-                        <i className="fas fa-image"></i>
-                        <span>1K</span>
-                    </button>
-                    <button 
-                        onClick={() => updateRequest('resolution', ImageResolution.RES_2K)}
-                        className={`flex-1 py-2 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                            request.resolution === ImageResolution.RES_2K 
-                            ? 'border-schiele-ink bg-schiele-ink text-white' 
-                            : 'border-schiele-border bg-white text-gray-500 hover:border-gray-400'
-                        }`}
-                    >
-                        <i className="fas fa-photo-video"></i>
-                        <span>2K</span>
-                    </button>
-                </div>
-            </div>
         </div>
       </div>
 

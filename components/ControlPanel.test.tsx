@@ -1,26 +1,46 @@
-import { render, screen } from '@testing-library/react';
+import React, { useState } from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ControlPanel } from './ControlPanel';
 import { GenerationMode, ImageResolution, ModelVersion, RenderStyle, TimeOfDay } from '../types';
 
-describe('ControlPanel API settings layout', () => {
+const createRequest = (overrides: Record<string, unknown> = {}) => ({
+  imageBase64: '',
+  imageMimeType: 'image/png',
+  prompt: '',
+  style: RenderStyle.PHOTOREALISTIC,
+  timeOfDay: TimeOfDay.DAY,
+  aspectRatio: '1:1',
+  resolution: ImageResolution.RES_1K,
+  modelVersion: ModelVersion.PRO,
+  mode: GenerationMode.AUTO,
+  compositionLock: false,
+  schemeLock: true,
+  referenceImages: [],
+  thinkingMode: 'deep',
+  ...overrides,
+});
+
+const StatefulPanel = () => {
+  const [request, setRequest] = useState(createRequest() as any);
+
+  return (
+    <ControlPanel
+      request={request}
+      setRequest={setRequest}
+      onGenerate={vi.fn()}
+      activeStandardRequests={0}
+      activeHeavyRequests={0}
+      hasApiAccess={true}
+    />
+  );
+};
+
+describe('ControlPanel generation settings layout', () => {
   it('does not render an inline API settings block anymore', () => {
     render(
       <ControlPanel
-        request={{
-          imageBase64: '',
-          imageMimeType: 'image/png',
-          prompt: '',
-          style: RenderStyle.PHOTOREALISTIC,
-          timeOfDay: TimeOfDay.DAY,
-          aspectRatio: '1:1',
-          resolution: ImageResolution.RES_1K,
-          modelVersion: ModelVersion.PRO,
-          mode: GenerationMode.AUTO,
-          compositionLock: false,
-          schemeLock: true,
-          referenceImages: [],
-        }}
+        request={createRequest() as any}
         setRequest={vi.fn()}
         onGenerate={vi.fn()}
         activeStandardRequests={0}
@@ -32,62 +52,35 @@ describe('ControlPanel API settings layout', () => {
     expect(screen.queryByText('Gemini API Key')).not.toBeInTheDocument();
   });
 
-  it('does not show resolution coin costs anymore', () => {
-    const { container } = render(
-      <ControlPanel
-        request={{
-          imageBase64: '',
-          imageMimeType: 'image/png',
-          prompt: '',
-          style: RenderStyle.PHOTOREALISTIC,
-          timeOfDay: TimeOfDay.DAY,
-          aspectRatio: '1:1',
-          resolution: ImageResolution.RES_1K,
-          modelVersion: ModelVersion.PRO,
-          mode: GenerationMode.AUTO,
-          compositionLock: false,
-          schemeLock: true,
-          referenceImages: [],
-        }}
-        setRequest={vi.fn()}
-        onGenerate={vi.fn()}
-        activeStandardRequests={0}
-        activeHeavyRequests={0}
-        hasApiAccess={true}
-      />,
-    );
+  it('keeps model, resolution, and aspect ratio inside a collapsed settings row', () => {
+    render(<StatefulPanel />);
 
-    expect(container.querySelector('.fa-coins')).toBeNull();
+    expect(screen.getByRole('button', { name: '展开渲染设置' })).toBeInTheDocument();
+    expect(screen.getByText('PRO · 1K · 1:1 · 深度')).toBeInTheDocument();
+    expect(screen.queryByText('NanoBanana PRO')).not.toBeInTheDocument();
   });
 
-  it('shows the updated model labels and ids', () => {
-    render(
-      <ControlPanel
-        request={{
-          imageBase64: '',
-          imageMimeType: 'image/png',
-          prompt: '',
-          style: RenderStyle.PHOTOREALISTIC,
-          timeOfDay: TimeOfDay.DAY,
-          aspectRatio: '1:1',
-          resolution: ImageResolution.RES_1K,
-          modelVersion: ModelVersion.PRO,
-          mode: GenerationMode.AUTO,
-          compositionLock: false,
-          schemeLock: true,
-          referenceImages: [],
-        }}
-        setRequest={vi.fn()}
-        onGenerate={vi.fn()}
-        activeStandardRequests={0}
-        activeHeavyRequests={0}
-        hasApiAccess={true}
-      />,
-    );
+  it('shows model, resolution, aspect ratio, and 4K when settings are expanded', () => {
+    render(<StatefulPanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: '展开渲染设置' }));
 
     expect(screen.getByText('NanoBanana PRO')).toBeInTheDocument();
     expect(screen.getByText('NanoBanana 2')).toBeInTheDocument();
-    expect(screen.getByText('gemini-3-pro-image-preview')).toBeInTheDocument();
-    expect(screen.getByText('gemini-3.1-flash-image-preview')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '4K' })).toBeInTheDocument();
+    expect(screen.getByText('16:9')).toBeInTheDocument();
+  });
+
+  it('shows fixed deep thinking for PRO and switchable thinking modes for NanoBanana 2', () => {
+    render(<StatefulPanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: '展开渲染设置' }));
+    expect(screen.getByText('PRO 固定高思考')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /NanoBanana 2/i }));
+
+    expect(screen.getByRole('button', { name: '默认' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '快速' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '深入' })).toBeInTheDocument();
   });
 });

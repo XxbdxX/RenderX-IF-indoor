@@ -8,6 +8,7 @@ import {
   GenerationResult,
   ModelVersion,
   RenderStyle,
+  ThinkingMode,
   TimeOfDay,
 } from "../types";
 import { getMissingApiConfigMessage } from './apiConfig';
@@ -220,14 +221,31 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
     ${userPrompt}
     
     [EXECUTION STEP]
-    Transform Input Image 1 (The Sketch/Model) into the final High-End Architectural Rendering.
+    Transform the primary source image (the sketch/model/base design) into the final High-End Architectural Rendering.
   `;
 
   try {
-    const parts: any[] = [{ inlineData: { mimeType: request.imageMimeType, data: request.imageBase64 } }];
+    const parts: any[] = [
+      {
+        text: `
+          [PRIMARY SOURCE IMAGE]
+          - This is the main architectural source image.
+          - Preserve its geometry, composition, and design intent unless the task explicitly allows optimization.
+          - Do NOT replace this image with any reference image.
+        `,
+      },
+      { inlineData: { mimeType: request.imageMimeType, data: request.imageBase64 } },
+    ];
 
     if (request.referenceImages) {
         request.referenceImages.forEach(ref => {
+            parts.push({
+              text: `
+                [REFERENCE IMAGE ${ref.id}]
+                - This image is for mood, material palette, lighting, and atmosphere reference only.
+                - Never use it as the base geometry or composition source.
+              `,
+            });
             parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.base64 } });
         });
     }
@@ -249,13 +267,23 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
     // imageSize is supported for both gemini-3-pro-image-preview and gemini-3.1-flash-image-preview
     imageConfig.imageSize = request.isUpscale ? "4K" : request.resolution;
 
+    const requestConfig: any = {
+      imageConfig: imageConfig,
+    };
+
+    if (request.modelVersion === ModelVersion.FLASH) {
+      if (request.thinkingMode === ThinkingMode.FAST) {
+        requestConfig.thinkingConfig = { thinkingLevel: 'minimal' };
+      } else if (request.thinkingMode === ThinkingMode.DEEP) {
+        requestConfig.thinkingConfig = { thinkingLevel: 'high' };
+      }
+    }
+
     const generateOnce = async (model: string) => {
       return ai.models.generateContent({
         model,
         contents: { parts },
-        config: {
-          imageConfig: imageConfig,
-        },
+        config: requestConfig,
       });
     };
 

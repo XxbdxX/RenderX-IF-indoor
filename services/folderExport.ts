@@ -32,6 +32,7 @@ interface FolderHistoryRecord {
   modelVersion?: ModelVersion;
   timeOfDay?: HistoryItem['timeOfDay'];
   aspectRatio?: string;
+  thinkingMode?: HistoryItem['thinkingMode'];
   compositionLock?: boolean;
   schemeLock?: boolean;
   referenceNote?: string;
@@ -120,6 +121,7 @@ const toFolderHistoryRecord = (item: HistoryItem, imageFileName: string): Folder
   modelVersion: item.modelVersion,
   timeOfDay: item.timeOfDay,
   aspectRatio: item.aspectRatio,
+  thinkingMode: item.thinkingMode,
   compositionLock: item.compositionLock,
   schemeLock: item.schemeLock,
   referenceNote: item.referenceNote,
@@ -140,6 +142,7 @@ const toHistoryItemFromRecord = (record: FolderHistoryRecord, imageUrl: string, 
   modelVersion: record.modelVersion,
   timeOfDay: record.timeOfDay,
   aspectRatio: record.aspectRatio,
+  thinkingMode: record.thinkingMode,
   compositionLock: record.compositionLock,
   schemeLock: record.schemeLock,
   referenceNote: record.referenceNote,
