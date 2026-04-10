@@ -41,6 +41,12 @@ describe('App API settings entry', () => {
     expect(screen.queryByText('5000')).not.toBeInTheDocument();
   });
 
+  it('removes the old hero marketing sentence', async () => {
+    render(<App />);
+
+    expect(screen.queryByText('为职业建筑师打造。内嵌 NanoBanana Pro 引擎，将 AI 能力内嵌实战工作流。')).not.toBeInTheDocument();
+  });
+
   it('closes the history drawer when clicking the backdrop', async () => {
     vi.mocked(getHistoryFromDb).mockResolvedValueOnce([
       {
@@ -62,6 +68,44 @@ describe('App API settings entry', () => {
 
     await user.click(screen.getByTestId('history-backdrop'));
     expect(screen.queryByText('方案画廊')).not.toBeInTheDocument();
+  });
+
+  it('shows model and preserved render parameters in history cards', async () => {
+    vi.mocked(getHistoryFromDb).mockResolvedValueOnce([
+      {
+        id: 'history-2',
+        timestamp: Date.now(),
+        imageUrl: 'data:image/png;base64,AAAA',
+        style: 'Photorealistic',
+        prompt: 'history item with params',
+        mode: 'Auto',
+        isAuto: true,
+        resolution: '2K',
+        modelVersion: 'Pro',
+        modelId: 'gemini-3-pro-image-preview',
+        aspectRatio: '16:9',
+        thinkingMode: 'deep',
+        timeOfDay: 'Dusk',
+        compositionLock: true,
+        schemeLock: false,
+        commercialEnhancement: true,
+      } as any,
+    ]);
+    localStorage.setItem('renderx_api_config', JSON.stringify({ provider: 'google-ai-studio', apiKey: 'demo-key' }));
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(await screen.findByRole('button', { name: /方案库/i }));
+
+    expect(await screen.findByText('NanoBanana PRO')).toBeInTheDocument();
+    expect(screen.getByText('2K')).toBeInTheDocument();
+    expect(screen.getByText('16:9')).toBeInTheDocument();
+    expect(screen.getByText('高思考')).toBeInTheDocument();
+    expect(screen.getByText('黄昏')).toBeInTheDocument();
+    expect(screen.getByText('构图锁定')).toBeInTheDocument();
+    expect(screen.getByText('商业增强')).toBeInTheDocument();
+    expect(screen.getByText('gemini-3-pro-image-preview')).toBeInTheDocument();
   });
 
   it('auto-hides success messages after five seconds', async () => {

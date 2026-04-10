@@ -31,7 +31,7 @@ import {
   normalizeApiConfig,
   saveApiConfig,
 } from './services/apiConfig';
-import { APP_VERSION, MAX_CONCURRENT_REQUESTS } from './constants';
+import { APP_VERSION, MAX_CONCURRENT_REQUESTS, STYLE_LABELS, TIME_LABELS } from './constants';
 import { 
     ApiProviderConfig,
     RenderStyle, 
@@ -511,6 +511,41 @@ function App() {
     setHistory(nextHistory);
   };
 
+  const getHistoryModeLabel = (item: HistoryItem): string => {
+    if (item.mode === GenerationMode.FREE) return 'Free Mode';
+    if (item.isAuto) return 'AI Auto';
+    return STYLE_LABELS[item.style] || item.style;
+  };
+
+  const getHistoryModelLabel = (item: HistoryItem): string => {
+    if (item.modelVersion === ModelVersion.PRO) return 'NanoBanana PRO';
+    if (item.modelVersion === ModelVersion.FLASH) return 'NanoBanana 2';
+    return '未记录模型';
+  };
+
+  const getHistoryThinkingLabel = (item: HistoryItem): string | null => {
+    if (item.modelVersion === ModelVersion.PRO) return '高思考';
+    if (item.thinkingMode === ThinkingMode.FAST) return '快速';
+    if (item.thinkingMode === ThinkingMode.DEEP) return '深入';
+    if (item.thinkingMode === ThinkingMode.DEFAULT) return '默认';
+    return null;
+  };
+
+  const getHistoryTags = (item: HistoryItem): string[] => {
+    const tags = [
+      item.resolution,
+      item.aspectRatio,
+      getHistoryThinkingLabel(item),
+      item.timeOfDay ? TIME_LABELS[item.timeOfDay] : null,
+      item.compositionLock ? '构图锁定' : null,
+      item.schemeLock ? '方案锁定' : null,
+      item.commercialEnhancement ? '商业增强' : null,
+      item.landscapeEnhancement ? '景观增强' : null,
+    ].filter((value): value is string => Boolean(value));
+
+    return tags;
+  };
+
   // --- Effects ---
   useEffect(() => {
     const init = async () => {
@@ -938,14 +973,11 @@ function App() {
         </div>
       )}
       
-      <section className="pt-24 pb-12 px-6 text-center max-w-5xl mx-auto animate-fade-in">
+      <section className="pt-24 pb-6 px-6 text-center max-w-4xl mx-auto animate-fade-in">
          <div className="relative inline-block">
-             <h1 className="text-4xl md:text-6xl font-bold text-schiele-ink mb-4 tracking-tight">Render<span className="text-schiele-rust">X</span>.VIP</h1>
+             <h1 className="text-4xl md:text-5xl font-bold text-schiele-ink mb-2 tracking-tight">Render<span className="text-schiele-rust">X</span>.VIP</h1>
          </div>
-         <p className="text-lg text-schiele-secondary max-w-2xl mx-auto font-light">
-            为职业建筑师打造。内嵌 NanoBanana Pro 引擎，将 AI 能力内嵌实战工作流。
-         </p>
-      </section>
+       </section>
 
       <main className="max-w-[1600px] mx-auto px-4 md:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -1042,16 +1074,33 @@ function App() {
                         <p>暂无记录</p>
                     </div>
                 ) : (
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         {history.map(item => (
                             <div key={item.id} className="border border-schiele-border rounded-xl overflow-hidden group hover:shadow-paper transition-shadow">
                                 <img src={item.imageUrl} className="w-full h-48 object-cover" />
-                                <div className="p-3 bg-gray-50 flex justify-between items-center">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-gray-600 truncate max-w-[150px]">
-                                            {item.mode === GenerationMode.FREE ? 'Free Mode' : (item.isAuto ? 'AI Auto' : item.style)}
-                                        </span>
-                                        <span className="text-[10px] text-gray-400">{new Date(item.timestamp).toLocaleTimeString()}</span>
+                                <div className="p-3 bg-gray-50 flex justify-between gap-3 items-start">
+                                    <div className="min-w-0 flex-1 flex flex-col gap-2">
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[11px] font-bold text-gray-500 truncate">
+                                                {getHistoryModeLabel(item)}
+                                            </span>
+                                            <span className="text-sm font-bold text-schiele-ink truncate">
+                                                {getHistoryModelLabel(item)}
+                                            </span>
+                                            {item.modelId && (
+                                                <span className="text-[10px] text-gray-400 truncate">{item.modelId}</span>
+                                            )}
+                                            <span className="text-[10px] text-gray-400">{new Date(item.timestamp).toLocaleTimeString()}</span>
+                                        </div>
+                                        {getHistoryTags(item).length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {getHistoryTags(item).map((tag) => (
+                                                    <span key={`${item.id}-${tag}`} className="px-2 py-1 rounded-full bg-white border border-gray-200 text-[10px] font-bold text-gray-600">
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex gap-2">
                                         <button onClick={() => { setShowHistoryModal(false); handleUseResultAsInput(item); }} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border border-gray-200 text-schiele-ink hover:text-white hover:bg-schiele-ink transition-colors" title="使用此底图">
