@@ -98,6 +98,27 @@ describe('generateRendering provider setup', () => {
     );
   });
 
+  it('passes a custom base URL when provider is yoro-gemini', async () => {
+    await generateRendering(
+      {
+        ...baseRequest,
+        modelVersion: ModelVersion.PRO,
+      },
+      {
+        provider: 'yoro-gemini',
+        apiKey: 'yoro-api-key',
+        baseUrl: 'https://api.yoro.ren',
+      } as any,
+    );
+
+    expect(googleGenAiMock).toHaveBeenCalledWith({
+      apiKey: 'yoro-api-key',
+      httpOptions: {
+        baseUrl: 'https://api.yoro.ren',
+      },
+    });
+  });
+
   it('sends labeled primary and reference image parts in a stable order', async () => {
     await generateRendering(
       {

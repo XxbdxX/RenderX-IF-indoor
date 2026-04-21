@@ -42,7 +42,16 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
           ...(apiConfig.vertexProject?.trim() ? { project: apiConfig.vertexProject.trim() } : {}),
           ...(apiConfig.vertexLocation?.trim() ? { location: apiConfig.vertexLocation.trim() } : {}),
         }
-      : { apiKey },
+      : {
+          apiKey,
+          ...(apiConfig.provider === ApiProvider.YORO_GEMINI && apiConfig.baseUrl?.trim()
+            ? {
+                httpOptions: {
+                  baseUrl: apiConfig.baseUrl.trim(),
+                },
+              }
+            : {}),
+        },
   );
 
   // 1. Base Role & Quality Assurance (Global)

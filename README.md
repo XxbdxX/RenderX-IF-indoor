@@ -1,6 +1,6 @@
 # RenderX IF Indoor
 
-团队内部使用的纯前端建筑效果图工具，当前支持 Google AI Studio 和 Vertex AI 两种接入模式。
+团队内部使用的纯前端建筑效果图工具，当前支持 Google AI Studio、Vertex AI 和 Yoro Gemini 中转三种接入模式。
 
 ## 当前功能
 
@@ -17,14 +17,16 @@
 1. 安装依赖：`npm install`
 2. 启动开发：`npm run dev`
 3. 打开页面后，点击右下角悬浮 API 按钮
-4. 选择 `AI Studio` 或 `Vertex AI`
+4. 选择 `AI Studio`、`Vertex AI` 或 `Yoro`
 5. 填入你自己的 API Key 并保存
 6. 如使用 `Vertex AI`，可按需填写 `project` 和 `location`；未填写时 `location` 默认使用 `global`
+7. 如使用 `Yoro`，默认 Base URL 为 `https://api.yoro.ren`，按其中转站 Gemini 兼容接口填写对应 API Key
 
 说明：
 
 - API 配置仅保存在当前浏览器的 `localStorage`，不会写入仓库
 - 首次打开页面且本地没有保存配置时，API 设置面板会自动弹出
+- `Yoro` 当前走 Gemini 兼容接口，复用现有多图与图片生成请求结构
 
 ## 渲染设置说明
 

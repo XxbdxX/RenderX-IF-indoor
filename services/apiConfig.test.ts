@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiProvider } from '../types';
-import { API_CONFIG_STORAGE_KEY, LEGACY_GEMINI_API_KEY_STORAGE_KEY, createEmptyApiConfig, loadStoredApiConfig, normalizeApiConfig } from './apiConfig';
+import {
+  API_CONFIG_STORAGE_KEY,
+  LEGACY_GEMINI_API_KEY_STORAGE_KEY,
+  YORO_DEFAULT_BASE_URL,
+  createEmptyApiConfig,
+  loadStoredApiConfig,
+  normalizeApiConfig,
+} from './apiConfig';
 
 describe('apiConfig storage', () => {
   beforeEach(() => {
@@ -13,6 +20,7 @@ describe('apiConfig storage', () => {
       apiKey: 'vertex-key',
       vertexProject: '',
       vertexLocation: '',
+      baseUrl: '',
     });
 
     expect(createEmptyApiConfig(ApiProvider.VERTEX_AI)).toEqual({
@@ -20,6 +28,25 @@ describe('apiConfig storage', () => {
       apiKey: '',
       vertexProject: '',
       vertexLocation: '',
+      baseUrl: '',
+    });
+  });
+
+  it('preserves the Yoro base URL and defaults it when omitted', () => {
+    expect(normalizeApiConfig({ provider: ApiProvider.YORO_GEMINI, apiKey: 'yoro-key' })).toEqual({
+      provider: ApiProvider.YORO_GEMINI,
+      apiKey: 'yoro-key',
+      vertexProject: '',
+      vertexLocation: '',
+      baseUrl: YORO_DEFAULT_BASE_URL,
+    });
+
+    expect(createEmptyApiConfig(ApiProvider.YORO_GEMINI)).toEqual({
+      provider: ApiProvider.YORO_GEMINI,
+      apiKey: '',
+      vertexProject: '',
+      vertexLocation: '',
+      baseUrl: YORO_DEFAULT_BASE_URL,
     });
   });
 
@@ -32,6 +59,7 @@ describe('apiConfig storage', () => {
       apiKey: 'legacy-key',
       vertexProject: '',
       vertexLocation: '',
+      baseUrl: '',
     });
   });
 });

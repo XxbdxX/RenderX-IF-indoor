@@ -2,9 +2,12 @@ import { ApiProvider, ApiProviderConfig } from '../types';
 
 export const API_CONFIG_STORAGE_KEY = 'renderx_api_config';
 export const LEGACY_GEMINI_API_KEY_STORAGE_KEY = 'renderx_gemini_api_key';
+export const YORO_DEFAULT_BASE_URL = 'https://api.yoro.ren';
 
 export const getProviderLabel = (provider: ApiProvider): string => {
-  return provider === ApiProvider.VERTEX_AI ? 'Vertex AI' : 'AI Studio';
+  if (provider === ApiProvider.VERTEX_AI) return 'Vertex AI';
+  if (provider === ApiProvider.YORO_GEMINI) return 'Yoro Gemini';
+  return 'AI Studio';
 };
 
 export const createEmptyApiConfig = (provider: ApiProvider = ApiProvider.AI_STUDIO): ApiProviderConfig => ({
@@ -12,10 +15,16 @@ export const createEmptyApiConfig = (provider: ApiProvider = ApiProvider.AI_STUD
   apiKey: '',
   vertexProject: '',
   vertexLocation: '',
+  baseUrl: provider === ApiProvider.YORO_GEMINI ? YORO_DEFAULT_BASE_URL : '',
 });
 
 export const normalizeApiConfig = (value?: Partial<ApiProviderConfig> | null): ApiProviderConfig => {
-  const provider = value?.provider === ApiProvider.VERTEX_AI ? ApiProvider.VERTEX_AI : ApiProvider.AI_STUDIO;
+  const provider =
+    value?.provider === ApiProvider.VERTEX_AI
+      ? ApiProvider.VERTEX_AI
+      : value?.provider === ApiProvider.YORO_GEMINI
+        ? ApiProvider.YORO_GEMINI
+        : ApiProvider.AI_STUDIO;
 
   return {
     provider,
@@ -25,11 +34,17 @@ export const normalizeApiConfig = (value?: Partial<ApiProviderConfig> | null): A
       provider === ApiProvider.VERTEX_AI
         ? (typeof value?.vertexLocation === 'string' ? value.vertexLocation.trim() : '')
         : '',
+    baseUrl:
+      provider === ApiProvider.YORO_GEMINI
+        ? (typeof value?.baseUrl === 'string' ? value.baseUrl.trim() : YORO_DEFAULT_BASE_URL)
+        : '',
   };
 };
 
 export const hasConfiguredApi = (config: ApiProviderConfig): boolean => {
-  return Boolean(config.apiKey.trim());
+  return config.provider === ApiProvider.YORO_GEMINI
+    ? Boolean(config.apiKey.trim() && config.baseUrl?.trim())
+    : Boolean(config.apiKey.trim());
 };
 
 export const loadStoredApiConfig = (): ApiProviderConfig => {
@@ -72,5 +87,9 @@ export const clearStoredApiConfig = (): void => {
 };
 
 export const getMissingApiConfigMessage = (provider: ApiProvider): string => {
+  if (provider === ApiProvider.YORO_GEMINI) {
+    return '请先配置 Yoro Gemini Base URL 和 API Key。';
+  }
+
   return `请先配置 ${getProviderLabel(provider)} API Key。`;
 };

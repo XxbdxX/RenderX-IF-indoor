@@ -42,7 +42,8 @@ export enum ThinkingMode {
 
 export enum ApiProvider {
   AI_STUDIO = 'google-ai-studio',
-  VERTEX_AI = 'vertex-ai'
+  VERTEX_AI = 'vertex-ai',
+  YORO_GEMINI = 'yoro-gemini'
 }
 
 export interface ApiProviderConfig {
@@ -50,6 +51,7 @@ export interface ApiProviderConfig {
   apiKey: string;
   vertexProject?: string;
   vertexLocation?: string;
+  baseUrl?: string;
 }
 
 export interface ReferenceImage {
