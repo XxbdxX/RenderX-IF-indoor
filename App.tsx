@@ -904,13 +904,7 @@ function App() {
 
         const saveSuffix = savedFileName ? ` 已自动保存到导出文件夹${savedMetaFileName ? '并写入参数记录' : ''}。` : '';
         if (isUpscaleOnly) {
-          if (result.didFallback) {
-            setSuccessMsg(`✨ 4K 增强完成（PRO 繁忙，已自动切换 NanoBanana 2）。${saveSuffix}`.trim());
-          } else {
-            setSuccessMsg(`✨ 4K 增强完成，图纸清晰度已提升。${saveSuffix}`.trim());
-          }
-        } else if (result.didFallback) {
-          setSuccessMsg(`✨ PRO 繁忙，已自动切换 NanoBanana 2 生成完成！${saveSuffix}`.trim());
+          setSuccessMsg(`✨ 4K 增强完成，图纸清晰度已提升。${saveSuffix}`.trim());
         } else {
           setSuccessMsg(`✨ 渲染完成！${savedFileName ? '已自动保存到导出文件夹。' : '请及时下载。'}`);
         }

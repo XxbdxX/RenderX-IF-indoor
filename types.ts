@@ -109,5 +109,4 @@ export interface GenerationRequest {
 export interface GenerationResult {
   imageUrl: string;
   modelUsed?: string;
-  didFallback?: boolean;
 }

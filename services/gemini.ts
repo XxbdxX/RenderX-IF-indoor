@@ -54,6 +54,8 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
         },
   );
 
+  const isFreeMode = request.mode === GenerationMode.FREE;
+
   // 1. Base Role & Quality Assurance (Global)
   const baseSystemInstruction = `
     [ROLE]
@@ -85,10 +87,11 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
       modeInstruction = `
         [TASK: DIRECT INSTRUCTION]
         - GOAL: Execute the user's prompt exactly.
-        - STYLE: Do not apply pre-set styles unless requested. Rely on the input image and user prompt.
-        - FREEDOM: Ignore standard constraints. The user's prompt is the absolute truth.
+        - RULE: Do not add any style, rendering, lighting, material, atmosphere, composition, or commercial assumptions unless the user explicitly asks for them.
+        - RULE: Use the provided images only as user input context. Do not reinterpret them toward any default visual target.
+        - PRIORITY: The user's prompt is the only instruction source.
       `;
-      styleInstruction = "Follow user description strictly.";
+      styleInstruction = '';
   } else if (request.mode === GenerationMode.AUTO) {
       modeInstruction = `
         [TASK: AI ART DIRECTION (AUTO)]
@@ -146,17 +149,25 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
   if (request.referenceImages && request.referenceImages.length > 0) {
       let refDetails = "";
       request.referenceImages.forEach(ref => {
-          refDetails += `- Reference Image ID ${ref.id}: Use as source for Materials/Vibe.\n`;
+        refDetails += `- Reference Image ID ${ref.id}: Use as source for Materials/Vibe.\n`;
       });
       const userRefNote = request.referenceNote ? `User Note on Refs: "${request.referenceNote}"` : "";
-      
-      refInstruction = `
-        [REFERENCE GUIDANCE]
-        The user has provided reference images.
-        ${refDetails}
-        ${userRefNote}
-        - INSTRUCTION: Transfer the *mood, material palette, and lighting* of the references to the input geometry. Do NOT copy the geometry of the references.
-      `;
+
+      refInstruction = isFreeMode
+        ? `
+          [REFERENCE GUIDANCE]
+          The user has provided additional reference images.
+          ${refDetails}
+          ${userRefNote}
+          - INSTRUCTION: Use these references only when they help satisfy the user's prompt. Do NOT replace the primary source image with any reference image.
+        `
+        : `
+          [REFERENCE GUIDANCE]
+          The user has provided reference images.
+          ${refDetails}
+          ${userRefNote}
+          - INSTRUCTION: Transfer the *mood, material palette, and lighting* of the references to the input geometry. Do NOT copy the geometry of the references.
+        `;
   }
 
   // 4. Locking Logic (Crucial for Architects - PS Overlay)
@@ -214,24 +225,35 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
   const userPrompt = request.prompt ? `[USER REQUEST]: "${request.prompt}"` : "";
 
   // 7. Final Assembly
-  const finalPrompt = `
-    ${baseSystemInstruction}
-    
-    ${modeInstruction}
-    
-    ${styleInstruction}
-    
-    ${lockInstruction}
+  const finalPrompt = isFreeMode
+    ? `
+      ${modeInstruction}
 
-    ${commercialLogic}
-    
-    ${refInstruction}
-    
-    ${userPrompt}
-    
-    [EXECUTION STEP]
-    Transform the primary source image (the sketch/model/base design) into the final High-End Architectural Rendering.
-  `;
+      ${refInstruction}
+
+      ${userPrompt}
+
+      [EXECUTION STEP]
+      Execute the user's request using the provided images and text only.
+    `
+    : `
+      ${baseSystemInstruction}
+      
+      ${modeInstruction}
+      
+      ${styleInstruction}
+      
+      ${lockInstruction}
+
+      ${commercialLogic}
+      
+      ${refInstruction}
+      
+      ${userPrompt}
+      
+      [EXECUTION STEP]
+      Transform the primary source image (the sketch/model/base design) into the final High-End Architectural Rendering.
+    `;
 
   try {
     const parts: any[] = [
@@ -311,21 +333,8 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
       throw lastErr;
     };
 
-    let response: any;
-    let modelUsed = preferredModelId;
-    let didFallback = false;
-    try {
-      response = await generateWithRetry(preferredModelId);
-    } catch (err: any) {
-      // If PRO is overloaded, fallback to FLASH automatically.
-      if (preferredModelId === proModelId && isOverloaded503(err)) {
-        didFallback = true;
-        modelUsed = flashModelId;
-        response = await generateWithRetry(flashModelId);
-      } else {
-        throw err;
-      }
-    }
+    const response: any = await generateWithRetry(preferredModelId);
+    const modelUsed = preferredModelId;
 
     let generatedImageUrl = "";
     if (response.candidates && response.candidates[0].content.parts) {
@@ -338,7 +347,7 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
     }
     
     if (!generatedImageUrl) throw new Error("Model returned no image data.");
-    return { imageUrl: generatedImageUrl, modelUsed, didFallback };
+    return { imageUrl: generatedImageUrl, modelUsed };
 
   } catch (error) {
     console.error("GenAI Error:", error);

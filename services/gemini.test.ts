@@ -119,6 +119,33 @@ describe('generateRendering provider setup', () => {
     });
   });
 
+  it('does not fall back to flash when the pro model is overloaded', async () => {
+    generateContentMock.mockReset();
+    generateContentMock.mockRejectedValue({ message: '503 UNAVAILABLE' });
+
+    await expect(
+      generateRendering(
+        {
+          ...baseRequest,
+          modelVersion: ModelVersion.PRO,
+        },
+        {
+          provider: 'google-ai-studio',
+          apiKey: 'ai-studio-key',
+        } as any,
+      ),
+    ).rejects.toMatchObject({ message: '503 UNAVAILABLE' });
+
+    expect(generateContentMock).toHaveBeenCalledTimes(4);
+    expect(generateContentMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ model: 'gemini-3-pro-image-preview' }),
+    );
+    expect(generateContentMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'gemini-3.1-flash-image-preview' }),
+    );
+  }, 10000);
+
   it('sends labeled primary and reference image parts in a stable order', async () => {
     await generateRendering(
       {
@@ -179,5 +206,31 @@ describe('generateRendering provider setup', () => {
 
     const call = generateContentMock.mock.calls[0][0];
     expect(call.config.thinkingConfig).toMatchObject({ thinkingLevel: 'minimal' });
+  });
+
+  it('keeps free mode prompt free of rendering presets while retaining user instructions', async () => {
+    await generateRendering(
+      {
+        ...baseRequest,
+        mode: GenerationMode.FREE,
+        prompt: 'Do not change the drawing style.',
+        referenceImages: [{ id: '1', mimeType: 'image/png', base64: 'ref-image-1' }],
+        referenceNote: '仅供参考',
+      },
+      {
+        provider: 'google-ai-studio',
+        apiKey: 'ai-studio-key',
+      } as any,
+    );
+
+    const prompt = generateContentMock.mock.calls[0][0].contents.parts.at(-1)?.text;
+    expect(prompt).toContain('Do not change the drawing style.');
+    expect(prompt).toContain('Execute the user\'s request using the provided images and text only.');
+    expect(prompt).toContain('Use these references only when they help satisfy the user\'s prompt.');
+    expect(prompt).not.toContain('High-End Architectural Visualization');
+    expect(prompt).not.toContain('V-Ray / Corona');
+    expect(prompt).not.toContain('COMMERCIAL ACTIVATION');
+    expect(prompt).not.toContain('High-End Architectural Rendering');
+    expect(prompt).not.toContain('Transfer the *mood, material palette, and lighting*');
   });
 });
