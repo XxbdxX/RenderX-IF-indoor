@@ -1,3 +1,7 @@
+export const config = {
+  runtime: 'edge',
+};
+
 const stripTrailingSlashes = (value) => value.replace(/\/+$/, '');
 
 const getImageEditEndpoint = (baseUrl) => {
@@ -7,29 +11,36 @@ const getImageEditEndpoint = (baseUrl) => {
     : `${normalizedBaseUrl}/images/edits`;
 };
 
-const getHeaderValue = (value) => {
-  return Array.isArray(value) ? value[0] || '' : value || '';
+const jsonResponse = (payload, status) => {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
 };
 
-export default async function handler(request, response) {
+export default async function handler(request) {
   if (request.method !== 'POST') {
-    response.setHeader('Allow', 'POST');
-    response.status(405).json({ error: 'Method not allowed' });
-    return;
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: {
+        Allow: 'POST',
+        'Content-Type': 'application/json',
+      },
+    });
   }
 
-  const baseUrl = getHeaderValue(request.headers['x-renderx-image-base-url']).trim();
-  const apiKey = getHeaderValue(request.headers['x-renderx-image-api-key']).trim();
+  const baseUrl = (request.headers.get('x-renderx-image-base-url') || '').trim();
+  const apiKey = (request.headers.get('x-renderx-image-api-key') || '').trim();
 
   if (!baseUrl || !apiKey) {
-    response.status(400).json({ error: 'Missing Image-2 Base URL or API Key.' });
-    return;
+    return jsonResponse({ error: 'Missing Image-2 Base URL or API Key.' }, 400);
   }
 
-  const contentType = getHeaderValue(request.headers['content-type']);
+  const contentType = request.headers.get('content-type') || '';
   if (!contentType.toLowerCase().includes('multipart/form-data')) {
-    response.status(400).json({ error: 'Image-2 proxy expects multipart/form-data.' });
-    return;
+    return jsonResponse({ error: 'Image-2 proxy expects multipart/form-data.' }, 400);
   }
 
   try {
@@ -44,13 +55,15 @@ export default async function handler(request, response) {
       duplex: 'half',
     });
 
-    const responseBody = await upstreamResponse.arrayBuffer();
-    response.status(upstreamResponse.status);
-    response.setHeader('Content-Type', upstreamResponse.headers.get('content-type') || 'application/json');
-    response.send(Buffer.from(responseBody));
-  } catch (error) {
-    response.status(502).json({
-      error: error instanceof Error ? error.message : 'Image-2 proxy request failed.',
+    return new Response(upstreamResponse.body, {
+      status: upstreamResponse.status,
+      headers: {
+        'Content-Type': upstreamResponse.headers.get('content-type') || 'application/json',
+      },
     });
+  } catch (error) {
+    return jsonResponse({
+      error: error instanceof Error ? error.message : 'Image-2 proxy request failed.',
+    }, 502);
   }
 }
