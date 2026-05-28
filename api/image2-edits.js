@@ -1,30 +1,17 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
+const stripTrailingSlashes = (value) => value.replace(/\/+$/, '');
 
-type VercelRequestLike = IncomingMessage & {
-  method?: string;
-  headers: IncomingMessage['headers'];
-};
-
-type VercelResponseLike = ServerResponse & {
-  status: (statusCode: number) => VercelResponseLike;
-  json: (body: unknown) => void;
-  send: (body: unknown) => void;
-};
-
-const stripTrailingSlashes = (value: string): string => value.replace(/\/+$/, '');
-
-const getImageEditEndpoint = (baseUrl: string): string => {
+const getImageEditEndpoint = (baseUrl) => {
   const normalizedBaseUrl = stripTrailingSlashes(baseUrl.trim());
   return normalizedBaseUrl.endsWith('/images/edits')
     ? normalizedBaseUrl
     : `${normalizedBaseUrl}/images/edits`;
 };
 
-const getHeaderValue = (value: string | string[] | undefined): string => {
+const getHeaderValue = (value) => {
   return Array.isArray(value) ? value[0] || '' : value || '';
 };
 
-export default async function handler(request: VercelRequestLike, response: VercelResponseLike) {
+export default async function handler(request, response) {
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST');
     response.status(405).json({ error: 'Method not allowed' });
@@ -55,12 +42,11 @@ export default async function handler(request: VercelRequestLike, response: Verc
       body: request,
       // Required by Node fetch when forwarding a streaming request body.
       duplex: 'half',
-    } as RequestInit & { duplex: 'half' });
+    });
 
     const responseBody = await upstreamResponse.arrayBuffer();
-    const upstreamContentType = upstreamResponse.headers.get('content-type') || 'application/json';
     response.status(upstreamResponse.status);
-    response.setHeader('Content-Type', upstreamContentType);
+    response.setHeader('Content-Type', upstreamResponse.headers.get('content-type') || 'application/json');
     response.send(Buffer.from(responseBody));
   } catch (error) {
     response.status(502).json({
