@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiProvider } from '../types';
 import {
   API_CONFIG_STORAGE_KEY,
+  IMAGE_2_DEFAULT_MODEL,
   LEGACY_GEMINI_API_KEY_STORAGE_KEY,
   YORO_DEFAULT_BASE_URL,
   createEmptyApiConfig,
@@ -21,6 +22,7 @@ describe('apiConfig storage', () => {
       vertexProject: '',
       vertexLocation: '',
       baseUrl: '',
+      imageModel: '',
     });
 
     expect(createEmptyApiConfig(ApiProvider.VERTEX_AI)).toEqual({
@@ -29,6 +31,7 @@ describe('apiConfig storage', () => {
       vertexProject: '',
       vertexLocation: '',
       baseUrl: '',
+      imageModel: '',
     });
   });
 
@@ -39,6 +42,7 @@ describe('apiConfig storage', () => {
       vertexProject: '',
       vertexLocation: '',
       baseUrl: YORO_DEFAULT_BASE_URL,
+      imageModel: '',
     });
 
     expect(createEmptyApiConfig(ApiProvider.YORO_GEMINI)).toEqual({
@@ -47,6 +51,31 @@ describe('apiConfig storage', () => {
       vertexProject: '',
       vertexLocation: '',
       baseUrl: YORO_DEFAULT_BASE_URL,
+      imageModel: '',
+    });
+  });
+
+  it('preserves Image-2 base URL and defaults its model', () => {
+    expect(normalizeApiConfig({
+      provider: ApiProvider.IMAGE_2,
+      apiKey: 'image-key',
+      baseUrl: 'https://relay.example.com/v1/',
+    })).toEqual({
+      provider: ApiProvider.IMAGE_2,
+      apiKey: 'image-key',
+      vertexProject: '',
+      vertexLocation: '',
+      baseUrl: 'https://relay.example.com/v1/',
+      imageModel: IMAGE_2_DEFAULT_MODEL,
+    });
+
+    expect(createEmptyApiConfig(ApiProvider.IMAGE_2)).toEqual({
+      provider: ApiProvider.IMAGE_2,
+      apiKey: '',
+      vertexProject: '',
+      vertexLocation: '',
+      baseUrl: '',
+      imageModel: IMAGE_2_DEFAULT_MODEL,
     });
   });
 
@@ -60,6 +89,7 @@ describe('apiConfig storage', () => {
       vertexProject: '',
       vertexLocation: '',
       baseUrl: '',
+      imageModel: '',
     });
   });
 });

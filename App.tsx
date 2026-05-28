@@ -1034,6 +1034,8 @@ function App() {
                 activeStandardRequests={activeStandardRequests}
                 activeHeavyRequests={activeHeavyRequests}
                 hasApiAccess={hasApiAccess}
+                apiProvider={apiConfig.provider}
+                imageModel={apiConfig.imageModel}
             />
           </div>
         </div>

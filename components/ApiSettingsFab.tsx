@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { ApiProvider, ApiProviderConfig } from '../types';
-import { getProviderLabel, hasConfiguredApi, YORO_DEFAULT_BASE_URL } from '../services/apiConfig';
+import { getProviderLabel, hasConfiguredApi, IMAGE_2_DEFAULT_MODEL, YORO_DEFAULT_BASE_URL } from '../services/apiConfig';
 
 interface ApiSettingsFabProps {
   savedConfig: ApiProviderConfig;
@@ -60,14 +60,18 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
       ? 'Vertex API Key'
       : draftConfig.provider === ApiProvider.YORO_GEMINI
         ? 'Yoro API Key'
-        : 'AI Studio API Key';
+        : draftConfig.provider === ApiProvider.IMAGE_2
+          ? 'Image-2 API Key'
+          : 'AI Studio API Key';
 
   const apiKeyPlaceholder =
     draftConfig.provider === ApiProvider.VERTEX_AI
       ? '粘贴 Vertex AI API Key'
       : draftConfig.provider === ApiProvider.YORO_GEMINI
         ? '粘贴 Yoro API Key'
-        : '粘贴 AI Studio API Key';
+        : draftConfig.provider === ApiProvider.IMAGE_2
+          ? '粘贴中转站 API Key'
+          : '粘贴 AI Studio API Key';
 
   return (
     <div ref={containerRef} className="fixed bottom-6 right-6 z-[1600] flex flex-col items-end gap-3">
@@ -95,11 +99,12 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
             </button>
           </div>
 
-          <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl bg-schiele-bg/80 p-1.5">
+          <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-schiele-bg/80 p-1.5 sm:grid-cols-4">
             {[
               { value: ApiProvider.AI_STUDIO, label: 'AI Studio' },
               { value: ApiProvider.VERTEX_AI, label: 'Vertex AI' },
               { value: ApiProvider.YORO_GEMINI, label: 'Yoro' },
+              { value: ApiProvider.IMAGE_2, label: 'Image-2' },
             ].map((option) => {
               const isActive = draftConfig.provider === option.value;
               return (
@@ -110,7 +115,13 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
                     updateDraft({
                       provider: option.value,
                       vertexLocation: option.value === ApiProvider.VERTEX_AI ? draftConfig.vertexLocation || '' : '',
-                      baseUrl: option.value === ApiProvider.YORO_GEMINI ? draftConfig.baseUrl || YORO_DEFAULT_BASE_URL : '',
+                      baseUrl:
+                        option.value === ApiProvider.YORO_GEMINI
+                          ? draftConfig.baseUrl || YORO_DEFAULT_BASE_URL
+                          : option.value === ApiProvider.IMAGE_2
+                            ? draftConfig.baseUrl || ''
+                            : '',
+                      imageModel: option.value === ApiProvider.IMAGE_2 ? draftConfig.imageModel || IMAGE_2_DEFAULT_MODEL : '',
                     })
                   }
                   className={`rounded-2xl px-3 py-2.5 text-xs font-bold transition-all ${
@@ -155,6 +166,38 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
                 <p className="mt-1 text-[11px] leading-5 text-schiele-secondary">
                   使用 Gemini 兼容根地址，例如 {YORO_DEFAULT_BASE_URL}
                 </p>
+              </div>
+            )}
+
+            {draftConfig.provider === ApiProvider.IMAGE_2 && (
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.18em] text-schiele-secondary">
+                    Base URL
+                  </label>
+                  <input
+                    type="text"
+                    value={draftConfig.baseUrl || ''}
+                    onChange={(event) => updateDraft({ baseUrl: event.target.value })}
+                    placeholder="https://your-relay.example.com/v1"
+                    className="w-full rounded-2xl border border-schiele-border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-schiele-rust"
+                  />
+                  <p className="mt-1 text-[11px] leading-5 text-schiele-secondary">
+                    填中转站的 OpenAI 兼容根地址，系统会调用 /images/edits。
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.18em] text-schiele-secondary">
+                    Model
+                  </label>
+                  <input
+                    type="text"
+                    value={draftConfig.imageModel || IMAGE_2_DEFAULT_MODEL}
+                    onChange={(event) => updateDraft({ imageModel: event.target.value })}
+                    placeholder={IMAGE_2_DEFAULT_MODEL}
+                    className="w-full rounded-2xl border border-schiele-border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-schiele-rust"
+                  />
+                </div>
               </div>
             )}
 

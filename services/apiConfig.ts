@@ -3,10 +3,12 @@ import { ApiProvider, ApiProviderConfig } from '../types';
 export const API_CONFIG_STORAGE_KEY = 'renderx_api_config';
 export const LEGACY_GEMINI_API_KEY_STORAGE_KEY = 'renderx_gemini_api_key';
 export const YORO_DEFAULT_BASE_URL = 'https://api.yoro.ren';
+export const IMAGE_2_DEFAULT_MODEL = 'image-2';
 
 export const getProviderLabel = (provider: ApiProvider): string => {
   if (provider === ApiProvider.VERTEX_AI) return 'Vertex AI';
   if (provider === ApiProvider.YORO_GEMINI) return 'Yoro Gemini';
+  if (provider === ApiProvider.IMAGE_2) return 'Image-2';
   return 'AI Studio';
 };
 
@@ -16,6 +18,7 @@ export const createEmptyApiConfig = (provider: ApiProvider = ApiProvider.AI_STUD
   vertexProject: '',
   vertexLocation: '',
   baseUrl: provider === ApiProvider.YORO_GEMINI ? YORO_DEFAULT_BASE_URL : '',
+  imageModel: provider === ApiProvider.IMAGE_2 ? IMAGE_2_DEFAULT_MODEL : '',
 });
 
 export const normalizeApiConfig = (value?: Partial<ApiProviderConfig> | null): ApiProviderConfig => {
@@ -24,7 +27,9 @@ export const normalizeApiConfig = (value?: Partial<ApiProviderConfig> | null): A
       ? ApiProvider.VERTEX_AI
       : value?.provider === ApiProvider.YORO_GEMINI
         ? ApiProvider.YORO_GEMINI
-        : ApiProvider.AI_STUDIO;
+        : value?.provider === ApiProvider.IMAGE_2
+          ? ApiProvider.IMAGE_2
+          : ApiProvider.AI_STUDIO;
 
   return {
     provider,
@@ -37,12 +42,20 @@ export const normalizeApiConfig = (value?: Partial<ApiProviderConfig> | null): A
     baseUrl:
       provider === ApiProvider.YORO_GEMINI
         ? (typeof value?.baseUrl === 'string' ? value.baseUrl.trim() : YORO_DEFAULT_BASE_URL)
+        : provider === ApiProvider.IMAGE_2
+          ? (typeof value?.baseUrl === 'string' ? value.baseUrl.trim() : '')
+        : '',
+    imageModel:
+      provider === ApiProvider.IMAGE_2
+        ? (typeof value?.imageModel === 'string' && value.imageModel.trim()
+            ? value.imageModel.trim()
+            : IMAGE_2_DEFAULT_MODEL)
         : '',
   };
 };
 
 export const hasConfiguredApi = (config: ApiProviderConfig): boolean => {
-  return config.provider === ApiProvider.YORO_GEMINI
+  return config.provider === ApiProvider.YORO_GEMINI || config.provider === ApiProvider.IMAGE_2
     ? Boolean(config.apiKey.trim() && config.baseUrl?.trim())
     : Boolean(config.apiKey.trim());
 };
@@ -89,6 +102,9 @@ export const clearStoredApiConfig = (): void => {
 export const getMissingApiConfigMessage = (provider: ApiProvider): string => {
   if (provider === ApiProvider.YORO_GEMINI) {
     return '请先配置 Yoro Gemini Base URL 和 API Key。';
+  }
+  if (provider === ApiProvider.IMAGE_2) {
+    return '请先配置 Image-2 Base URL 和 API Key。';
   }
 
   return `请先配置 ${getProviderLabel(provider)} API Key。`;

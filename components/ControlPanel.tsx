@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { RenderStyle, TimeOfDay, GenerationRequest, ImageResolution, GenerationMode, ModelVersion, ThinkingMode } from '../types';
+import { ApiProvider, RenderStyle, TimeOfDay, GenerationRequest, ImageResolution, GenerationMode, ModelVersion, ThinkingMode } from '../types';
 import { MAX_CONCURRENT_REQUESTS, STYLE_ICONS, TIME_ICONS, STYLE_LABELS, TIME_LABELS } from '../constants';
 
 interface ControlPanelProps {
@@ -11,6 +11,8 @@ interface ControlPanelProps {
   activeStandardRequests: number;
   activeHeavyRequests: number;
   hasApiAccess: boolean;
+  apiProvider: ApiProvider;
+  imageModel?: string;
 }
 
 interface SavedPrompt {
@@ -25,9 +27,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onGenerate,
   activeStandardRequests,
   activeHeavyRequests,
-  hasApiAccess
+  hasApiAccess,
+  apiProvider,
+  imageModel
 }) => {
   const { mode } = request;
+  const isImage2Provider = apiProvider === ApiProvider.IMAGE_2;
   
   // Prompt Cache Ref
   const promptCache = useRef<Record<GenerationMode, string>>({
@@ -127,7 +132,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         ? '深入'
         : '默认';
 
-  const renderSettingsSummary = `${request.modelVersion === ModelVersion.PRO ? 'PRO' : 'N2'} · ${request.resolution} · ${aspectRatioSummary} · ${thinkingSummary}`;
+  const renderModelSummary = isImage2Provider
+    ? (imageModel || 'image-2')
+    : request.modelVersion === ModelVersion.PRO ? 'PRO' : 'N2';
+  const renderSettingsSummary = isImage2Provider
+    ? `${renderModelSummary} · ${request.resolution} · ${aspectRatioSummary}`
+    : `${renderModelSummary} · ${request.resolution} · ${aspectRatioSummary} · ${thinkingSummary}`;
 
   return (
     <div className={`flex flex-col h-full p-6 md:p-8 rounded-[24px] shadow-paper border transition-all duration-500 relative ${
@@ -225,39 +235,52 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="px-4 pb-4 space-y-4 border-t border-schiele-border/70 bg-white/80 animate-fade-in">
             <div className="pt-4">
               <div className="mb-2"><label className="text-xs font-bold text-schiele-secondary uppercase">模型选择</label></div>
-              <div className="flex gap-2 p-1 bg-schiele-bg/50 rounded-xl border border-schiele-border">
-                <button
-                  onClick={() => handleModelVersionChange(ModelVersion.PRO)}
-                  className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
-                    request.modelVersion === ModelVersion.PRO
-                      ? 'bg-white text-schiele-ink shadow-sm'
-                      : 'text-gray-400 hover:text-gray-600'
-                  }`}
-                >
-                  <i className={`fas fa-star self-start mt-0.5 ${request.modelVersion === ModelVersion.PRO ? 'text-yellow-500' : ''}`}></i>
-                  <span className="flex flex-col items-start leading-tight text-left">
-                    <span>NanoBanana PRO</span>
-                    <span className={`text-[8px] font-mono ${request.modelVersion === ModelVersion.PRO ? 'text-schiele-secondary' : 'text-gray-300'}`}>gemini-3-pro-image-preview</span>
-                  </span>
-                </button>
-                <button
-                  onClick={() => handleModelVersionChange(ModelVersion.FLASH)}
-                  className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
-                    request.modelVersion === ModelVersion.FLASH
-                      ? 'bg-white text-schiele-ink shadow-sm'
-                      : 'text-gray-400 hover:text-gray-600'
-                  }`}
-                >
-                  <i className={`fas fa-bolt self-start mt-0.5 ${request.modelVersion === ModelVersion.FLASH ? 'text-blue-500' : ''}`}></i>
-                  <span className="flex flex-col items-start leading-tight text-left">
-                    <span>NanoBanana 2</span>
-                    <span className={`text-[8px] font-mono ${request.modelVersion === ModelVersion.FLASH ? 'text-schiele-secondary' : 'text-gray-300'}`}>gemini-3.1-flash-image-preview</span>
-                  </span>
-                </button>
-              </div>
+              {isImage2Provider ? (
+                <div className="rounded-xl border border-schiele-border bg-white px-3 py-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-schiele-ink">
+                    <i className="fas fa-wand-magic-sparkles text-schiele-rust"></i>
+                    <span>Image-2</span>
+                  </div>
+                  <div className="mt-1 text-[10px] font-mono text-schiele-secondary">{imageModel || 'image-2'}</div>
+                  <p className="mt-1 text-[10px] leading-4 text-gray-400">
+                    当前 provider 使用 API 设置里的 Model 字段，NanoBanana 选项不会参与请求。
+                  </p>
+                </div>
+              ) : (
+                <div className="flex gap-2 p-1 bg-schiele-bg/50 rounded-xl border border-schiele-border">
+                  <button
+                    onClick={() => handleModelVersionChange(ModelVersion.PRO)}
+                    className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      request.modelVersion === ModelVersion.PRO
+                        ? 'bg-white text-schiele-ink shadow-sm'
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    <i className={`fas fa-star self-start mt-0.5 ${request.modelVersion === ModelVersion.PRO ? 'text-yellow-500' : ''}`}></i>
+                    <span className="flex flex-col items-start leading-tight text-left">
+                      <span>NanoBanana PRO</span>
+                      <span className={`text-[8px] font-mono ${request.modelVersion === ModelVersion.PRO ? 'text-schiele-secondary' : 'text-gray-300'}`}>gemini-3-pro-image-preview</span>
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => handleModelVersionChange(ModelVersion.FLASH)}
+                    className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      request.modelVersion === ModelVersion.FLASH
+                        ? 'bg-white text-schiele-ink shadow-sm'
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    <i className={`fas fa-bolt self-start mt-0.5 ${request.modelVersion === ModelVersion.FLASH ? 'text-blue-500' : ''}`}></i>
+                    <span className="flex flex-col items-start leading-tight text-left">
+                      <span>NanoBanana 2</span>
+                      <span className={`text-[8px] font-mono ${request.modelVersion === ModelVersion.FLASH ? 'text-schiele-secondary' : 'text-gray-300'}`}>gemini-3.1-flash-image-preview</span>
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div>
+            {!isImage2Provider && <div>
               <div className="mb-2 flex items-center justify-between">
                 <label className="text-xs font-bold text-schiele-secondary uppercase">思考强度</label>
                 {request.modelVersion === ModelVersion.FLASH && <span className="text-[10px] text-gray-400">NanoBanana 2 可调</span>}
@@ -287,7 +310,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   ))}
                 </div>
               )}
-            </div>
+            </div>}
 
             <div>
               <div className="mb-2"><label className="text-xs font-bold text-schiele-secondary uppercase">分辨率</label></div>

@@ -11,7 +11,7 @@ import {
   ThinkingMode,
   TimeOfDay,
 } from "../types";
-import { getMissingApiConfigMessage } from './apiConfig';
+import { IMAGE_2_DEFAULT_MODEL, getMissingApiConfigMessage } from './apiConfig';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -28,31 +28,114 @@ const isOverloaded503 = (error: any): boolean => {
   );
 };
 
+const stripTrailingSlashes = (value: string): string => value.replace(/\/+$/, '');
+
+const getImageEditEndpoint = (baseUrl: string): string => {
+  const normalizedBaseUrl = stripTrailingSlashes(baseUrl.trim());
+  return normalizedBaseUrl.endsWith('/images/edits')
+    ? normalizedBaseUrl
+    : `${normalizedBaseUrl}/images/edits`;
+};
+
+const base64ToBlob = (base64: string, mimeType: string): Blob => {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: mimeType });
+};
+
+const getFileExtension = (mimeType: string): string => {
+  if (mimeType.includes('jpeg') || mimeType.includes('jpg')) return 'jpg';
+  if (mimeType.includes('webp')) return 'webp';
+  return 'png';
+};
+
+const buildOpenAiImageSize = (request: GenerationRequest): string => {
+  if (!request.aspectRatio || request.aspectRatio === 'free' || request.aspectRatio === 'original') {
+    return 'auto';
+  }
+  if (request.aspectRatio === '16:9' || request.aspectRatio === '4:3') {
+    return '1536x1024';
+  }
+  if (request.aspectRatio === '9:16' || request.aspectRatio === '3:4') {
+    return '1024x1536';
+  }
+  return '1024x1024';
+};
+
+const normalizeOpenAiImageResponse = async (response: Response): Promise<GenerationResult> => {
+  const responseText = await response.text();
+  let payload: any = null;
+
+  try {
+    payload = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    const message =
+      payload?.error?.message ||
+      payload?.message ||
+      responseText ||
+      `Image-2 request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+
+  const firstImage = payload?.data?.[0] || payload?.images?.[0] || payload;
+  const base64Image = firstImage?.b64_json || firstImage?.base64 || firstImage?.image_base64;
+  const imageUrl = firstImage?.url || firstImage?.image_url;
+
+  if (base64Image) {
+    return { imageUrl: `data:image/png;base64,${base64Image}` };
+  }
+  if (imageUrl) {
+    return { imageUrl };
+  }
+
+  throw new Error('Image-2 returned no image data.');
+};
+
+const generateImage2Rendering = async (
+  request: GenerationRequest,
+  apiConfig: ApiProviderConfig,
+  prompt: string,
+): Promise<GenerationResult> => {
+  const apiKey = apiConfig.apiKey.trim();
+  const baseUrl = apiConfig.baseUrl?.trim();
+  if (!apiKey || !baseUrl) {
+    throw new Error(getMissingApiConfigMessage(apiConfig.provider));
+  }
+
+  const formData = new FormData();
+  const model = apiConfig.imageModel?.trim() || IMAGE_2_DEFAULT_MODEL;
+  formData.append('model', model);
+  formData.append('prompt', prompt);
+  formData.append('size', buildOpenAiImageSize(request));
+  formData.append('image', base64ToBlob(request.imageBase64, request.imageMimeType), `primary.${getFileExtension(request.imageMimeType)}`);
+
+  request.referenceImages?.forEach((ref) => {
+    formData.append('image', base64ToBlob(ref.base64, ref.mimeType), `reference-${ref.id}.${getFileExtension(ref.mimeType)}`);
+  });
+
+  const response = await fetch(getImageEditEndpoint(baseUrl), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: formData,
+  });
+  const result = await normalizeOpenAiImageResponse(response);
+  return { ...result, modelUsed: model };
+};
+
 export const generateRendering = async (request: GenerationRequest, apiConfig: ApiProviderConfig): Promise<GenerationResult> => {
   const apiKey = apiConfig.apiKey.trim();
   if (!apiKey) {
     throw new Error(getMissingApiConfigMessage(apiConfig.provider));
   }
-
-  const ai = new GoogleGenAI(
-    apiConfig.provider === ApiProvider.VERTEX_AI
-      ? {
-          vertexai: true,
-          apiKey,
-          ...(apiConfig.vertexProject?.trim() ? { project: apiConfig.vertexProject.trim() } : {}),
-          ...(apiConfig.vertexLocation?.trim() ? { location: apiConfig.vertexLocation.trim() } : {}),
-        }
-      : {
-          apiKey,
-          ...(apiConfig.provider === ApiProvider.YORO_GEMINI && apiConfig.baseUrl?.trim()
-            ? {
-                httpOptions: {
-                  baseUrl: apiConfig.baseUrl.trim(),
-                },
-              }
-            : {}),
-        },
-  );
 
   const isFreeMode = request.mode === GenerationMode.FREE;
 
@@ -287,6 +370,30 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
     const proModelId = 'gemini-3-pro-image-preview';
     const flashModelId = 'gemini-3.1-flash-image-preview';
     const preferredModelId = request.modelVersion === ModelVersion.PRO ? proModelId : flashModelId;
+
+    if (apiConfig.provider === ApiProvider.IMAGE_2) {
+      return await generateImage2Rendering(request, apiConfig, finalPrompt);
+    }
+
+    const ai = new GoogleGenAI(
+      apiConfig.provider === ApiProvider.VERTEX_AI
+        ? {
+            vertexai: true,
+            apiKey,
+            ...(apiConfig.vertexProject?.trim() ? { project: apiConfig.vertexProject.trim() } : {}),
+            ...(apiConfig.vertexLocation?.trim() ? { location: apiConfig.vertexLocation.trim() } : {}),
+          }
+        : {
+            apiKey,
+            ...(apiConfig.provider === ApiProvider.YORO_GEMINI && apiConfig.baseUrl?.trim()
+              ? {
+                  httpOptions: {
+                    baseUrl: apiConfig.baseUrl.trim(),
+                  },
+                }
+              : {}),
+          },
+    );
     
     // Prepare Config
     const imageConfig: any = {};

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ControlPanel } from './ControlPanel';
-import { GenerationMode, ImageResolution, ModelVersion, RenderStyle, TimeOfDay } from '../types';
+import { ApiProvider, GenerationMode, ImageResolution, ModelVersion, RenderStyle, TimeOfDay } from '../types';
 
 const createRequest = (overrides: Record<string, unknown> = {}) => ({
   imageBase64: '',
@@ -32,6 +32,7 @@ const StatefulPanel = () => {
       activeStandardRequests={0}
       activeHeavyRequests={0}
       hasApiAccess={true}
+      apiProvider={ApiProvider.AI_STUDIO}
     />
   );
 };
@@ -46,6 +47,7 @@ describe('ControlPanel generation settings layout', () => {
         activeStandardRequests={0}
         activeHeavyRequests={0}
         hasApiAccess={true}
+        apiProvider={ApiProvider.AI_STUDIO}
       />,
     );
 
@@ -82,5 +84,29 @@ describe('ControlPanel generation settings layout', () => {
     expect(screen.getByRole('button', { name: '默认' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '快速' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '深入' })).toBeInTheDocument();
+  });
+
+  it('shows the active Image-2 model instead of NanoBanana choices for Image-2 provider', () => {
+    render(
+      <ControlPanel
+        request={createRequest() as any}
+        setRequest={vi.fn()}
+        onGenerate={vi.fn()}
+        activeStandardRequests={0}
+        activeHeavyRequests={0}
+        hasApiAccess={true}
+        apiProvider={ApiProvider.IMAGE_2}
+        imageModel="image-2"
+      />,
+    );
+
+    expect(screen.getByText('image-2 · 1K · 1:1')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '展开渲染设置' }));
+
+    expect(screen.getByText('Image-2')).toBeInTheDocument();
+    expect(screen.getByText('当前 provider 使用 API 设置里的 Model 字段，NanoBanana 选项不会参与请求。')).toBeInTheDocument();
+    expect(screen.queryByText('NanoBanana PRO')).not.toBeInTheDocument();
+    expect(screen.queryByText('NanoBanana 2')).not.toBeInTheDocument();
   });
 });

@@ -13,7 +13,7 @@ vi.mock('@google/genai', () => ({
 
 describe('generateRendering provider setup', () => {
   const baseRequest = {
-    imageBase64: 'base64-image',
+    imageBase64: 'aW1hZ2U=',
     imageMimeType: 'image/png',
     prompt: 'render this lobby',
     style: RenderStyle.PHOTOREALISTIC,
@@ -31,6 +31,7 @@ describe('generateRendering provider setup', () => {
   beforeEach(() => {
     generateContentMock.mockReset();
     googleGenAiMock.mockReset();
+    vi.restoreAllMocks();
 
     generateContentMock.mockResolvedValue({
       candidates: [
@@ -119,6 +120,49 @@ describe('generateRendering provider setup', () => {
     });
   });
 
+  it('posts Image-2 requests to the configured OpenAI-compatible images edits endpoint', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue(JSON.stringify({
+        data: [{ b64_json: 'image-2-data' }],
+      })),
+    } as any);
+
+    const result = await generateRendering(
+      {
+        ...baseRequest,
+        modelVersion: ModelVersion.FLASH,
+        referenceImages: [{ id: '1', mimeType: 'image/png', base64: 'cmVmLWltYWdl' }],
+      },
+      {
+        provider: 'image-2',
+        apiKey: 'relay-api-key',
+        baseUrl: 'https://relay.example.com/v1',
+      } as any,
+    );
+
+    expect(result).toEqual({
+      imageUrl: 'data:image/png;base64,image-2-data',
+      modelUsed: 'image-2',
+    });
+    expect(googleGenAiMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://relay.example.com/v1/images/edits',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer relay-api-key',
+        },
+        body: expect.any(FormData),
+      }),
+    );
+
+    const body = fetchMock.mock.calls[0][1]?.body as FormData;
+    expect(body.get('model')).toBe('image-2');
+    expect(body.get('size')).toBe('1024x1024');
+    expect(body.getAll('image')).toHaveLength(2);
+  });
+
   it('does not fall back to flash when the pro model is overloaded', async () => {
     generateContentMock.mockReset();
     generateContentMock.mockRejectedValue({ message: '503 UNAVAILABLE' });
@@ -165,7 +209,7 @@ describe('generateRendering provider setup', () => {
     const call = generateContentMock.mock.calls[0][0];
     expect(call.contents.parts.slice(0, 6)).toMatchObject([
       { text: expect.stringContaining('PRIMARY SOURCE IMAGE') },
-      { inlineData: { mimeType: 'image/png', data: 'base64-image' } },
+      { inlineData: { mimeType: 'image/png', data: 'aW1hZ2U=' } },
       { text: expect.stringContaining('REFERENCE IMAGE 1') },
       { inlineData: { mimeType: 'image/jpeg', data: 'ref-image-1' } },
       { text: expect.stringContaining('REFERENCE IMAGE 2') },
