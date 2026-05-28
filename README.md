@@ -21,14 +21,14 @@
 5. 填入你自己的 API Key 并保存
 6. 如使用 `Vertex AI`，可按需填写 `project` 和 `location`；未填写时 `location` 默认使用 `global`
 7. 如使用 `Yoro`，默认 Base URL 为 `https://api.yoro.ren`，按其中转站 Gemini 兼容接口填写对应 API Key
-8. 如使用 `Image-2`，填写中转站提供的 OpenAI 兼容 Base URL 和 API Key；Base URL 可填到 `/v1`，应用会调用 `/images/edits`
+8. 如使用 `Image-2`，填写中转站提供的 OpenAI 兼容 Base URL 和 API Key；Base URL 可填到 `/v1`，应用会通过同源代理调用 `/images/edits`
 
 说明：
 
 - API 配置仅保存在当前浏览器的 `localStorage`，不会写入仓库
 - 首次打开页面且本地没有保存配置时，API 设置面板会自动弹出
 - `Yoro` 当前走 Gemini 兼容接口，复用现有多图与图片生成请求结构
-- `Image-2` 当前走 OpenAI 兼容图片编辑接口，请确认中转站支持 `image-2` 模型和多图 `images/edits` 请求
+- `Image-2` 当前走 OpenAI 兼容图片编辑接口，并通过 `/api/image2-edits` 同源代理转发，避免浏览器跨域请求被中转站 CORS 拦截
 
 ## 渲染设置说明
 

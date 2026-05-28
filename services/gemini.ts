@@ -28,15 +28,6 @@ const isOverloaded503 = (error: any): boolean => {
   );
 };
 
-const stripTrailingSlashes = (value: string): string => value.replace(/\/+$/, '');
-
-const getImageEditEndpoint = (baseUrl: string): string => {
-  const normalizedBaseUrl = stripTrailingSlashes(baseUrl.trim());
-  return normalizedBaseUrl.endsWith('/images/edits')
-    ? normalizedBaseUrl
-    : `${normalizedBaseUrl}/images/edits`;
-};
-
 const base64ToBlob = (base64: string, mimeType: string): Blob => {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -120,10 +111,11 @@ const generateImage2Rendering = async (
     formData.append('image', base64ToBlob(ref.base64, ref.mimeType), `reference-${ref.id}.${getFileExtension(ref.mimeType)}`);
   });
 
-  const response = await fetch(getImageEditEndpoint(baseUrl), {
+  const response = await fetch('/api/image2-edits', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      'X-RenderX-Image-Base-Url': baseUrl,
+      'X-RenderX-Image-Api-Key': apiKey,
     },
     body: formData,
   });

@@ -147,11 +147,12 @@ describe('generateRendering provider setup', () => {
     });
     expect(googleGenAiMock).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://relay.example.com/v1/images/edits',
+      '/api/image2-edits',
       expect.objectContaining({
         method: 'POST',
         headers: {
-          Authorization: 'Bearer relay-api-key',
+          'X-RenderX-Image-Base-Url': 'https://relay.example.com/v1',
+          'X-RenderX-Image-Api-Key': 'relay-api-key',
         },
         body: expect.any(FormData),
       }),

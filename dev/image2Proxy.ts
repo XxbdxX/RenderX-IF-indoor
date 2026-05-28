@@ -1,0 +1,54 @@
+import type { IncomingMessage, ServerResponse } from 'node:http';
+
+const stripTrailingSlashes = (value: string): string => value.replace(/\/+$/, '');
+
+const getImageEditEndpoint = (baseUrl: string): string => {
+  const normalizedBaseUrl = stripTrailingSlashes(baseUrl.trim());
+  return normalizedBaseUrl.endsWith('/images/edits')
+    ? normalizedBaseUrl
+    : `${normalizedBaseUrl}/images/edits`;
+};
+
+const sendJson = (response: ServerResponse, status: number, payload: unknown) => {
+  response.statusCode = status;
+  response.setHeader('Content-Type', 'application/json');
+  response.end(JSON.stringify(payload));
+};
+
+export const handleImage2ProxyRequest = async (request: IncomingMessage, response: ServerResponse) => {
+  if (request.method !== 'POST') {
+    response.setHeader('Allow', 'POST');
+    sendJson(response, 405, { error: 'Method not allowed' });
+    return;
+  }
+
+  const baseUrl = String(request.headers['x-renderx-image-base-url'] || '').trim();
+  const apiKey = String(request.headers['x-renderx-image-api-key'] || '').trim();
+  const contentType = String(request.headers['content-type'] || '');
+
+  if (!baseUrl || !apiKey) {
+    sendJson(response, 400, { error: 'Missing Image-2 Base URL or API Key.' });
+    return;
+  }
+
+  try {
+    const upstreamResponse = await fetch(getImageEditEndpoint(baseUrl), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': contentType,
+      },
+      body: request,
+      duplex: 'half',
+    } as RequestInit & { duplex: 'half' });
+
+    const responseBody = Buffer.from(await upstreamResponse.arrayBuffer());
+    response.statusCode = upstreamResponse.status;
+    response.setHeader('Content-Type', upstreamResponse.headers.get('content-type') || 'application/json');
+    response.end(responseBody);
+  } catch (error) {
+    sendJson(response, 502, {
+      error: error instanceof Error ? error.message : 'Image-2 proxy request failed.',
+    });
+  }
+};
