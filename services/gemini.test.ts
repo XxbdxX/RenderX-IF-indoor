@@ -242,6 +242,27 @@ describe('generateRendering provider setup', () => {
     )).rejects.toThrow('model gpt-image-2 is not enabled');
   });
 
+  it('shows a specific message for Vercel Image-2 proxy timeouts', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 504,
+      headers: new Headers({ 'content-type': 'text/plain' }),
+      text: vi.fn().mockResolvedValue('FUNCTION_INVOCATION_TIMEOUT'),
+    } as any);
+
+    await expect(generateRendering(
+      {
+        ...baseRequest,
+        prompt: 'render this lobby',
+      },
+      {
+        provider: 'image-2',
+        apiKey: 'relay-api-key',
+        baseUrl: 'https://relay.example.com/v1',
+      } as any,
+    )).rejects.toThrow('Image-2 请求超时');
+  });
+
   it('reads direct image responses from Image-2 relays', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
       new Uint8Array([1, 2, 3]),

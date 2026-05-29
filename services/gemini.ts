@@ -225,6 +225,10 @@ const normalizeOpenAiImageResponse = async (response: Response): Promise<Generat
   }
 
   if (!response.ok) {
+    if (response.status === 504 || responseText.includes('FUNCTION_INVOCATION_TIMEOUT')) {
+      throw new Error('Image-2 请求超时：中转站生成时间超过 Vercel 函数等待上限。请先用自由比例/1K 或无参考图重试，或稍后再试。');
+    }
+
     const message =
       payload?.error?.message ||
       (typeof payload?.error === 'string' ? payload.error : '') ||
