@@ -1,5 +1,8 @@
 export const config = {
-  maxDuration: 60,
+  api: {
+    bodyParser: false,
+    maxDuration: 60,
+  },
 };
 
 const stripTrailingSlashes = (value) => value.replace(/\/+$/, '');
@@ -20,81 +23,70 @@ const getImageGenerationEndpoint = (baseUrl) => {
   return `${normalizedBaseUrl}/images/generations`;
 };
 
-const jsonResponse = (payload, status) => {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+const sendJson = (response, status, payload) => {
+  response.statusCode = status;
+  response.setHeader('Content-Type', 'application/json');
+  response.end(JSON.stringify(payload));
 };
 
-export default async function handler(request) {
+const readRequestBody = async (request) => {
+  const chunks = [];
+  for await (const chunk of request) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+};
+
+export default async function handler(request, response) {
   if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: {
-        Allow: 'POST',
-        'Content-Type': 'application/json',
-      },
-    });
+    response.setHeader('Allow', 'POST');
+    sendJson(response, 405, { error: 'Method not allowed' });
+    return;
   }
 
-  const baseUrl = (request.headers.get('x-renderx-image-base-url') || '').trim();
-  const apiKey = (request.headers.get('x-renderx-image-api-key') || '').trim();
+  const baseUrl = String(request.headers['x-renderx-image-base-url'] || '').trim();
+  const apiKey = String(request.headers['x-renderx-image-api-key'] || '').trim();
 
   if (!baseUrl || !apiKey) {
-    return jsonResponse({ error: 'Missing Image-2 Base URL or API Key.' }, 400);
+    sendJson(response, 400, { error: 'Missing Image-2 Base URL or API Key.' });
+    return;
   }
 
   try {
-    const contentType = request.headers.get('content-type') || '';
-    if (contentType.toLowerCase().includes('application/json')) {
-      const payload = await request.json();
-      const upstreamResponse = await fetch(getImageGenerationEndpoint(baseUrl), {
-        method: 'POST',
-        headers: {
+    const contentType = String(request.headers['content-type'] || '');
+    const isJsonRequest = contentType.toLowerCase().includes('application/json');
+    const body = await readRequestBody(request);
+
+    if (!isJsonRequest && !contentType.toLowerCase().includes('multipart/form-data')) {
+      sendJson(response, 400, { error: 'Image-2 proxy expects multipart/form-data or application/json.' });
+      return;
+    }
+
+    const upstreamHeaders = isJsonRequest
+      ? {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+        }
+      : {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': contentType,
+        };
 
-      return new Response(upstreamResponse.body, {
-        status: upstreamResponse.status,
-        headers: {
-          'Content-Type': upstreamResponse.headers.get('content-type') || 'application/json',
-        },
-      });
-    }
-
-    if (!contentType.toLowerCase().includes('multipart/form-data')) {
-      return jsonResponse({ error: 'Image-2 proxy expects multipart/form-data or application/json.' }, 400);
-    }
-
-    const incomingFormData = await request.formData();
-    const hasImage = incomingFormData.getAll('image').length > 0;
-    const endpoint = hasImage ? getImageEditEndpoint(baseUrl) : getImageGenerationEndpoint(baseUrl);
-    const upstreamBody = hasImage ? incomingFormData : JSON.stringify(Object.fromEntries(incomingFormData.entries()));
-    const upstreamHeaders = hasImage
-      ? { Authorization: `Bearer ${apiKey}` }
-      : { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
-
-    const upstreamResponse = await fetch(endpoint, {
-      method: 'POST',
-      headers: upstreamHeaders,
-      body: upstreamBody,
-    });
-
-    return new Response(upstreamResponse.body, {
-      status: upstreamResponse.status,
-      headers: {
-        'Content-Type': upstreamResponse.headers.get('content-type') || 'application/json',
+    const upstreamResponse = await fetch(
+      isJsonRequest ? getImageGenerationEndpoint(baseUrl) : getImageEditEndpoint(baseUrl),
+      {
+        method: 'POST',
+        headers: upstreamHeaders,
+        body,
       },
-    });
+    );
+
+    response.statusCode = upstreamResponse.status;
+    response.setHeader('Content-Type', upstreamResponse.headers.get('content-type') || 'application/json');
+    response.end(Buffer.from(await upstreamResponse.arrayBuffer()));
   } catch (error) {
-    return jsonResponse({
+    sendJson(response, 502, {
       error: error instanceof Error ? error.message : 'Image-2 proxy request failed.',
-    }, 502);
+    });
   }
 }
