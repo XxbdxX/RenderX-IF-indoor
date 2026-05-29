@@ -9,6 +9,15 @@ const getImageEditEndpoint = (baseUrl: string): string => {
     : `${normalizedBaseUrl}/images/edits`;
 };
 
+const getImageGenerationEndpoint = (baseUrl: string): string => {
+  const normalizedBaseUrl = stripTrailingSlashes(baseUrl.trim());
+  if (normalizedBaseUrl.endsWith('/images/generations')) return normalizedBaseUrl;
+  if (normalizedBaseUrl.endsWith('/images/edits')) {
+    return normalizedBaseUrl.replace(/\/images\/edits$/, '/images/generations');
+  }
+  return `${normalizedBaseUrl}/images/generations`;
+};
+
 const sendJson = (response: ServerResponse, status: number, payload: unknown) => {
   response.statusCode = status;
   response.setHeader('Content-Type', 'application/json');
@@ -32,13 +41,24 @@ export const handleImage2ProxyRequest = async (request: IncomingMessage, respons
   }
 
   try {
-    const upstreamResponse = await fetch(getImageEditEndpoint(baseUrl), {
+    const isJsonRequest = contentType.toLowerCase().includes('application/json');
+    let body: BodyInit = request as unknown as BodyInit;
+
+    if (isJsonRequest) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      body = Buffer.concat(chunks).toString('utf8');
+    }
+
+    const upstreamResponse = await fetch(isJsonRequest ? getImageGenerationEndpoint(baseUrl) : getImageEditEndpoint(baseUrl), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': contentType,
       },
-      body: request,
+      body,
       duplex: 'half',
     } as RequestInit & { duplex: 'half' });
 

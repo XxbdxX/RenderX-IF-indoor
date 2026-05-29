@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ApiProvider, RenderStyle, TimeOfDay, GenerationRequest, ImageResolution, GenerationMode, ModelVersion, ThinkingMode } from '../types';
 import { MAX_CONCURRENT_REQUESTS, STYLE_ICONS, TIME_ICONS, STYLE_LABELS, TIME_LABELS } from '../constants';
+import { IMAGE_2_DEFAULT_MODEL } from '../services/apiConfig';
 
 interface ControlPanelProps {
   request: GenerationRequest;
@@ -133,7 +134,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         : '默认';
 
   const renderModelSummary = isImage2Provider
-    ? (imageModel || 'image-2')
+    ? (imageModel || IMAGE_2_DEFAULT_MODEL)
     : request.modelVersion === ModelVersion.PRO ? 'PRO' : 'N2';
   const renderSettingsSummary = isImage2Provider
     ? `${renderModelSummary} · ${request.resolution} · ${aspectRatioSummary}`
@@ -241,7 +242,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     <i className="fas fa-wand-magic-sparkles text-schiele-rust"></i>
                     <span>Image-2</span>
                   </div>
-                  <div className="mt-1 text-[10px] font-mono text-schiele-secondary">{imageModel || 'image-2'}</div>
+                  <div className="mt-1 text-[10px] font-mono text-schiele-secondary">{imageModel || IMAGE_2_DEFAULT_MODEL}</div>
                   <p className="mt-1 text-[10px] leading-4 text-gray-400">
                     当前 provider 使用 API 设置里的 Model 字段，NanoBanana 选项不会参与请求。
                   </p>

@@ -33,6 +33,7 @@ import {
 } from './services/apiConfig';
 import { APP_VERSION, MAX_CONCURRENT_REQUESTS, STYLE_LABELS, TIME_LABELS } from './constants';
 import { 
+    ApiProvider,
     ApiProviderConfig,
     RenderStyle, 
     TimeOfDay, 
@@ -752,6 +753,15 @@ function App() {
       }
   };
 
+  const handleContainerPaste = (e: React.ClipboardEvent) => {
+      const imageItem = Array.from(e.clipboardData.items).find((item) => item.type.startsWith('image/'));
+      const file = imageItem?.getAsFile();
+      if (file) {
+          e.preventDefault();
+          processDroppedFile(file);
+      }
+  };
+
   const isHeavyTask = (res: ImageResolution) => res === ImageResolution.RES_4K;
 
   const canGenerate = (_resolution: ImageResolution = request.resolution): boolean => {
@@ -768,8 +778,14 @@ function App() {
   ) => {
     const effectiveSourceBase64 = overrideSourceBase64 || sourceImageBase64;
     const effectiveSourceMime = overrideSourceMime || sourceImageMime || 'image/png';
+    const isImage2TextGeneration =
+      !isUpscaleOnly &&
+      !effectiveSourceBase64 &&
+      request.mode === GenerationMode.FREE &&
+      apiConfig.provider === ApiProvider.IMAGE_2;
     
-    if (!effectiveSourceBase64) { setError("请先上传底图"); return; }
+    if (!effectiveSourceBase64 && !isImage2TextGeneration) { setError("请先上传底图"); return; }
+    if (isImage2TextGeneration && !request.prompt.trim()) { setError("请先输入文生图提示词"); return; }
     if (!hasApiAccess) {
       setIsApiSettingsOpen(true);
       setError(getMissingApiConfigMessage(apiConfig.provider));
@@ -786,12 +802,15 @@ function App() {
     let effectiveAspectRatio = request.aspectRatio;
     let enforceOriginalAspect = false;
     if (effectiveAspectRatio === 'original') {
-        if (!sourceImageBase64 || !sourceAspectRatio) {
+        if (isImage2TextGeneration) {
+            effectiveAspectRatio = 'free';
+        } else if (!sourceImageBase64 || !sourceAspectRatio) {
             setError("请先上传底图才能使用跟随原图");
             return;
+        } else {
+            enforceOriginalAspect = true;
+            effectiveAspectRatio = 'free';
         }
-        enforceOriginalAspect = true;
-        effectiveAspectRatio = 'free';
     }
 
     const tempId = uuidv4();
@@ -799,7 +818,7 @@ function App() {
     const isHeavy = isHeavyTask(requestResolution);
 
     // Save Original Image for comparison
-    const originalUrl = overrideOriginalUrl || `data:${effectiveSourceMime};base64,${effectiveSourceBase64}`;
+    const originalUrl = isImage2TextGeneration ? '' : (overrideOriginalUrl || `data:${effectiveSourceMime};base64,${effectiveSourceBase64}`);
 
     const placeholderItem = {
         id: tempId,
@@ -829,7 +848,7 @@ function App() {
     try {
         const result = await generateRendering({
             ...request,
-            imageBase64: effectiveSourceBase64,
+            imageBase64: effectiveSourceBase64 || '',
             imageMimeType: effectiveSourceMime,
             prompt: finalPrompt,
             resolution: requestResolution,
@@ -978,7 +997,14 @@ function App() {
           
           <div className="lg:col-span-7 flex flex-col space-y-6" ref={mainInputRef}>
             <div 
-                className={`relative min-h-[500px] bg-white rounded-[24px] shadow-paper overflow-hidden transition-all duration-300 ${isDraggingOver ? 'ring-4 ring-schiele-rust scale-[0.99] bg-orange-50' : ''}`}
+                className={`relative min-h-[500px] bg-white rounded-[24px] shadow-paper overflow-hidden transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-schiele-rust/30 ${isDraggingOver ? 'ring-4 ring-schiele-rust scale-[0.99] bg-orange-50' : ''}`}
+                tabIndex={0}
+                onClick={(event) => {
+                    if (!sourceImageBase64) {
+                        event.currentTarget.focus();
+                    }
+                }}
+                onPaste={handleContainerPaste}
                 onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true); }}
                 onDragLeave={() => setIsDraggingOver(false)}
                 onDrop={handleContainerDrop}
@@ -1012,7 +1038,7 @@ function App() {
                         )}
                     </>
                 ) : (
-                    <div className="absolute inset-0 p-4">
+                    <div className="absolute inset-0 p-8 flex items-center justify-center">
                         <ImageUploader onImageSelected={handleImageSelected} onError={setError} />
                     </div>
                 )}

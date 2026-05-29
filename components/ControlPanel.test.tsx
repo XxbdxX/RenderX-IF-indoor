@@ -96,11 +96,11 @@ describe('ControlPanel generation settings layout', () => {
         activeHeavyRequests={0}
         hasApiAccess={true}
         apiProvider={ApiProvider.IMAGE_2}
-        imageModel="image-2"
+        imageModel="gpt-image-2"
       />,
     );
 
-    expect(screen.getByText('image-2 · 2K · 原图')).toBeInTheDocument();
+    expect(screen.getByText('gpt-image-2 · 2K · 原图')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '展开渲染设置' }));
 

@@ -69,6 +69,7 @@ const normalizeOpenAiImageResponse = async (response: Response): Promise<Generat
   if (!response.ok) {
     const message =
       payload?.error?.message ||
+      (typeof payload?.error === 'string' ? payload.error : '') ||
       payload?.message ||
       responseText ||
       `Image-2 request failed with status ${response.status}`;
@@ -102,9 +103,26 @@ const generateImage2Rendering = async (
 
   const formData = new FormData();
   const model = apiConfig.imageModel?.trim() || IMAGE_2_DEFAULT_MODEL;
+  const size = buildOpenAiImageSize(request);
+  const hasSourceImage = Boolean(request.imageBase64 && request.imageMimeType);
+
+  if (!hasSourceImage) {
+    const response = await fetch('/api/image2-edits', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-RenderX-Image-Base-Url': baseUrl,
+        'X-RenderX-Image-Api-Key': apiKey,
+      },
+      body: JSON.stringify({ model, prompt, size }),
+    });
+    const result = await normalizeOpenAiImageResponse(response);
+    return { ...result, modelUsed: model };
+  }
+
   formData.append('model', model);
   formData.append('prompt', prompt);
-  formData.append('size', buildOpenAiImageSize(request));
+  formData.append('size', size);
   formData.append('image', base64ToBlob(request.imageBase64, request.imageMimeType), `primary.${getFileExtension(request.imageMimeType)}`);
 
   request.referenceImages?.forEach((ref) => {

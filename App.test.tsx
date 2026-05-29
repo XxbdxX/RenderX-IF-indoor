@@ -146,7 +146,7 @@ describe('App API settings entry', () => {
       provider: 'image-2',
       apiKey: 'image-key',
       baseUrl: 'https://relay.example.com/v1',
-      imageModel: 'image-2',
+      imageModel: 'gpt-image-2',
     });
   });
 });

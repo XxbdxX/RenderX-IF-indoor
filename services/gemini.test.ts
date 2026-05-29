@@ -143,7 +143,7 @@ describe('generateRendering provider setup', () => {
 
     expect(result).toEqual({
       imageUrl: 'data:image/png;base64,image-2-data',
-      modelUsed: 'image-2',
+      modelUsed: 'gpt-image-2',
     });
     expect(googleGenAiMock).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith(
@@ -159,9 +159,56 @@ describe('generateRendering provider setup', () => {
     );
 
     const body = fetchMock.mock.calls[0][1]?.body as FormData;
-    expect(body.get('model')).toBe('image-2');
+    expect(body.get('model')).toBe('gpt-image-2');
     expect(body.get('size')).toBe('1024x1024');
     expect(body.getAll('image')).toHaveLength(2);
+  });
+
+  it('posts Image-2 text-only requests as JSON for free mode generations', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue(JSON.stringify({
+        data: [{ b64_json: 'text-image-data' }],
+      })),
+    } as any);
+
+    const result = await generateRendering(
+      {
+        ...baseRequest,
+        imageBase64: '',
+        imageMimeType: '',
+        prompt: 'a quiet gallery interior',
+        mode: GenerationMode.FREE,
+        aspectRatio: 'free',
+      },
+      {
+        provider: 'image-2',
+        apiKey: 'relay-api-key',
+        baseUrl: 'https://relay.example.com/v1',
+      } as any,
+    );
+
+    expect(result).toEqual({
+      imageUrl: 'data:image/png;base64,text-image-data',
+      modelUsed: 'gpt-image-2',
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/image2-edits',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RenderX-Image-Base-Url': 'https://relay.example.com/v1',
+          'X-RenderX-Image-Api-Key': 'relay-api-key',
+        },
+        body: expect.any(String),
+      }),
+    );
+    expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toMatchObject({
+      model: 'gpt-image-2',
+      prompt: expect.stringContaining('a quiet gallery interior'),
+      size: 'auto',
+    });
   });
 
   it('does not fall back to flash when the pro model is overloaded', async () => {

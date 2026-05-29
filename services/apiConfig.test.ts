@@ -79,6 +79,22 @@ describe('apiConfig storage', () => {
     });
   });
 
+  it('migrates the old Image-2 model alias to gpt-image-2', () => {
+    expect(normalizeApiConfig({
+      provider: ApiProvider.IMAGE_2,
+      apiKey: 'image-key',
+      baseUrl: 'https://relay.example.com/v1',
+      imageModel: 'image-2',
+    })).toEqual({
+      provider: ApiProvider.IMAGE_2,
+      apiKey: 'image-key',
+      vertexProject: '',
+      vertexLocation: '',
+      baseUrl: 'https://relay.example.com/v1',
+      imageModel: IMAGE_2_DEFAULT_MODEL,
+    });
+  });
+
   it('migrates the legacy Gemini key when the new config is empty', () => {
     localStorage.setItem(API_CONFIG_STORAGE_KEY, JSON.stringify({ provider: ApiProvider.AI_STUDIO, apiKey: '' }));
     localStorage.setItem(LEGACY_GEMINI_API_KEY_STORAGE_KEY, 'legacy-key');

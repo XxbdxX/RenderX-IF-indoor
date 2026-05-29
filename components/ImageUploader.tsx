@@ -51,7 +51,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelected, o
 
   return (
     <div
-      className={`relative w-full h-full min-h-[400px] flex flex-col items-center justify-center rounded-[16px] border-2 border-dashed transition-all duration-300 cursor-pointer overflow-hidden bg-white/50 ${
+      className={`relative w-[min(86%,520px)] min-h-[260px] flex flex-col items-center justify-center rounded-[16px] border-2 border-dashed transition-all duration-300 cursor-pointer overflow-hidden bg-white/50 ${
         isDragging ? 'border-schiele-rust bg-orange-50/50 scale-[0.99]' : 'border-schiele-border hover:border-schiele-rust/50 hover:bg-white'
       }`}
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -67,12 +67,12 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelected, o
         onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
       />
       
-      <div className="flex flex-col items-center space-y-4 p-6 text-center">
-        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${isDragging ? 'bg-schiele-rust text-white' : 'bg-schiele-bg text-schiele-secondary'}`}>
-            <i className="fas fa-cloud-upload-alt text-3xl"></i>
+      <div className="flex flex-col items-center space-y-3 p-5 text-center">
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${isDragging ? 'bg-schiele-rust text-white' : 'bg-schiele-bg text-schiele-secondary'}`}>
+            <i className="fas fa-cloud-upload-alt text-2xl"></i>
         </div>
         <div>
-            <h3 className="text-xl font-bold text-schiele-ink mb-2">上传设计方案</h3>
+            <h3 className="text-lg font-bold text-schiele-ink mb-2">上传设计方案</h3>
             <p className="text-sm text-schiele-secondary">点击或拖拽线稿/截图</p>
             <p className="text-xs text-schiele-secondary/60 mt-1">JPG/PNG (支持 AI 增强 4K 放大)</p>
         </div>

@@ -3,7 +3,7 @@ import { ApiProvider, ApiProviderConfig } from '../types';
 export const API_CONFIG_STORAGE_KEY = 'renderx_api_config';
 export const LEGACY_GEMINI_API_KEY_STORAGE_KEY = 'renderx_gemini_api_key';
 export const YORO_DEFAULT_BASE_URL = 'https://api.yoro.ren';
-export const IMAGE_2_DEFAULT_MODEL = 'image-2';
+export const IMAGE_2_DEFAULT_MODEL = 'gpt-image-2';
 
 export const getProviderLabel = (provider: ApiProvider): string => {
   if (provider === ApiProvider.VERTEX_AI) return 'Vertex AI';
@@ -31,6 +31,8 @@ export const normalizeApiConfig = (value?: Partial<ApiProviderConfig> | null): A
           ? ApiProvider.IMAGE_2
           : ApiProvider.AI_STUDIO;
 
+  const imageModel = typeof value?.imageModel === 'string' ? value.imageModel.trim() : '';
+
   return {
     provider,
     apiKey: typeof value?.apiKey === 'string' ? value.apiKey.trim() : '',
@@ -47,8 +49,8 @@ export const normalizeApiConfig = (value?: Partial<ApiProviderConfig> | null): A
         : '',
     imageModel:
       provider === ApiProvider.IMAGE_2
-        ? (typeof value?.imageModel === 'string' && value.imageModel.trim()
-            ? value.imageModel.trim()
+        ? (imageModel && imageModel !== 'image-2'
+            ? imageModel
             : IMAGE_2_DEFAULT_MODEL)
         : '',
   };
