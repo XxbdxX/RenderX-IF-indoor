@@ -261,6 +261,22 @@ describe('generateRendering provider setup', () => {
     )).rejects.toThrow('Image-2 请求超时');
   });
 
+  it('shows a specific message when direct Image-2 relay requests are disconnected', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(generateRendering(
+      {
+        ...baseRequest,
+        prompt: 'render this lobby',
+      },
+      {
+        provider: 'image-2',
+        apiKey: 'relay-api-key',
+        baseUrl: 'https://relay.example.com/v1',
+      } as any,
+    )).rejects.toThrow('Image-2 中转站连接失败');
+  });
+
   it('reads direct image responses from Image-2 relays', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
       new Uint8Array([1, 2, 3]),

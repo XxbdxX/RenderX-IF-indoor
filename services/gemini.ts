@@ -43,9 +43,9 @@ const getFileExtension = (mimeType: string): string => {
   return 'png';
 };
 
-const IMAGE_2_MAX_PROXY_IMAGE_BYTES = 2.5 * 1024 * 1024;
-const IMAGE_2_COMPRESSION_DIMENSIONS = [2048, 1600, 1280];
-const IMAGE_2_COMPRESSION_QUALITIES = [0.86, 0.78, 0.7];
+const IMAGE_2_MAX_UPLOAD_IMAGE_BYTES = 768 * 1024;
+const IMAGE_2_COMPRESSION_DIMENSIONS = [1600, 1280, 1024, 768];
+const IMAGE_2_COMPRESSION_QUALITIES = [0.82, 0.72, 0.62, 0.52];
 
 const estimateBase64ByteLength = (base64: string): number => {
   const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
@@ -82,7 +82,7 @@ const compressImageForImage2Proxy = async (
   base64: string,
   mimeType: string,
 ): Promise<{ base64: string; mimeType: string }> => {
-  if (estimateBase64ByteLength(base64) <= IMAGE_2_MAX_PROXY_IMAGE_BYTES) {
+  if (estimateBase64ByteLength(base64) <= IMAGE_2_MAX_UPLOAD_IMAGE_BYTES) {
     return { base64, mimeType };
   }
 
@@ -105,7 +105,7 @@ const compressImageForImage2Proxy = async (
         const blob = await canvasToBlob(canvas, 'image/jpeg', quality);
         if (!blob) continue;
         bestBlob = !bestBlob || blob.size < bestBlob.size ? blob : bestBlob;
-        if (blob.size <= IMAGE_2_MAX_PROXY_IMAGE_BYTES) {
+        if (blob.size <= IMAGE_2_MAX_UPLOAD_IMAGE_BYTES) {
           return { base64: await blobToBase64Data(blob), mimeType: 'image/jpeg' };
         }
       }
@@ -279,6 +279,14 @@ const normalizeOpenAiImageResponse = async (response: Response): Promise<Generat
   throw new Error(`Image-2 returned no image data. Response: ${summarizePayload(payload, responseText)}`);
 };
 
+const fetchImage2Endpoint = async (url: string, init: RequestInit): Promise<Response> => {
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    throw new Error('Image-2 中转站连接失败：浏览器请求被断开。请优先减少/移除参考图，或在 API 设置里切换到另一个中转节点。');
+  }
+};
+
 const generateImage2Rendering = async (
   request: GenerationRequest,
   apiConfig: ApiProviderConfig,
@@ -296,7 +304,7 @@ const generateImage2Rendering = async (
   const hasSourceImage = Boolean(request.imageBase64 && request.imageMimeType);
 
   if (!hasSourceImage) {
-    const response = await fetch(getImage2GenerationEndpoint(baseUrl), {
+    const response = await fetchImage2Endpoint(getImage2GenerationEndpoint(baseUrl), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -327,7 +335,7 @@ const generateImage2Rendering = async (
     );
   }
 
-  const response = await fetch(getImage2EditEndpoint(baseUrl), {
+  const response = await fetchImage2Endpoint(getImage2EditEndpoint(baseUrl), {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,

@@ -1,7 +1,7 @@
 import { RenderStyle, TimeOfDay } from './types';
 
 export const MAX_CONCURRENT_REQUESTS = 5;
-export const APP_VERSION = 'V2.0.10';
+export const APP_VERSION = 'V2.0.11';
 
 export const STYLE_ICONS = {
   [RenderStyle.PHOTOREALISTIC]: 'fa-camera',
