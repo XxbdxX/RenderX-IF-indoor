@@ -1,6 +1,6 @@
 # RenderX IF Indoor
 
-团队内部使用的纯前端建筑效果图工具，当前支持 Google AI Studio、Vertex AI、Yoro Gemini 中转和 Image-2 中转接入模式。
+团队内部使用的纯前端建筑效果图工具，当前支持 Google AI Studio、Yoro Gemini 中转和 Image-2 中转接入模式。
 
 ## 当前功能
 
@@ -17,11 +17,10 @@
 1. 安装依赖：`npm install`
 2. 启动开发：`npm run dev`
 3. 打开页面后，点击右下角悬浮 API 按钮
-4. 选择 `AI Studio`、`Vertex AI`、`Yoro` 或 `Image-2`
+4. 选择 `AI Studio`、`Yoro` 或 `Image-2`
 5. 填入你自己的 API Key 并保存
-6. 如使用 `Vertex AI`，可按需填写 `project` 和 `location`；未填写时 `location` 默认使用 `global`
-7. 如使用 `Yoro`，默认 Base URL 为 `https://api.yoro.ren`，按其中转站 Gemini 兼容接口填写对应 API Key
-8. 如使用 `Image-2`，填写中转站提供的 OpenAI 兼容 Base URL 和 API Key；Base URL 可填到 `/v1`，应用会通过同源代理调用 `/images/edits`
+6. 如使用 `Yoro`，默认 Base URL 为 `https://api.yoro.ren`，按其中转站 Gemini 兼容接口填写对应 API Key
+7. 如使用 `Image-2`，填写中转站提供的 OpenAI 兼容 Base URL 和 API Key；Base URL 可填到 `/v1`，应用会通过同源代理调用 `/images/edits`
 
 说明：
 
@@ -34,7 +33,7 @@
 
 - `NanoBanana PRO`：固定高思考，适合质量优先场景
 - `NanoBanana 2`：支持 `默认 / 快速 / 深入` 三档思考强度
-- 选择 `Image-2` provider 时仍保留页面上的 NanoBanana 选项，但实际模型由 API 设置里的 `Model` 字段决定，默认 `image-2`
+- 可在渲染设置标题右侧切换 `NanoBanana` 与 `Image-2` 通道；Image-2 实际模型由 API 设置里的 `Model` 字段决定，默认 `gpt-image-2`
 - `4K` 会按高负载任务进入渲染队列，耗时通常高于 `1K / 2K`
 - 画布比例当前支持：`自由比例`、`跟随原图`、`1:1`、`16:9`、`9:16`、`4:3`、`3:4`
 
@@ -54,5 +53,5 @@
 
 ## 安全建议
 
-- 在 Google AI Studio 或 Vertex AI 对 API Key 配置 HTTP Referrer 限制
+- 在 Google AI Studio 对 API Key 配置 HTTP Referrer 限制
 - 仅允许你的 Vercel 域名，例如 `https://your-app.vercel.app/*`
