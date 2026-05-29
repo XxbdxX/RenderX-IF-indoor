@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { APP_VERSION } from './constants';
+import { IMAGE_2_DEFAULT_BASE_URL } from './services/apiConfig';
 import { getHistoryFromDb } from './services/historyDb';
 
 vi.mock('./services/historyDb', () => ({
@@ -137,16 +138,14 @@ describe('App API settings entry', () => {
     await screen.findByRole('dialog', { name: 'API 设置面板' });
     fireEvent.click(screen.getByRole('button', { name: 'Image-2' }));
     fireEvent.change(screen.getByPlaceholderText('粘贴中转站 API Key'), { target: { value: 'image-key' } });
-    fireEvent.change(screen.getByPlaceholderText('https://your-relay.example.com/v1'), {
-      target: { value: 'https://relay.example.com/v1' },
-    });
+    expect(screen.getByDisplayValue(IMAGE_2_DEFAULT_BASE_URL)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '保存设置' }));
 
     expect(screen.getByText('Image-2 API 已保存到本地浏览器')).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem('renderx_api_config') || '{}')).toMatchObject({
       provider: 'image-2',
       apiKey: 'image-key',
-      baseUrl: 'https://relay.example.com/v1',
+      baseUrl: IMAGE_2_DEFAULT_BASE_URL,
       imageModel: 'gpt-image-2',
     });
   });

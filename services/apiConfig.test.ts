@@ -3,6 +3,7 @@ import { ApiProvider } from '../types';
 import {
   API_CONFIG_STORAGE_KEY,
   API_CONFIGS_STORAGE_KEY,
+  IMAGE_2_DEFAULT_BASE_URL,
   IMAGE_2_DEFAULT_MODEL,
   LEGACY_GEMINI_API_KEY_STORAGE_KEY,
   YORO_DEFAULT_BASE_URL,
@@ -59,9 +60,22 @@ describe('apiConfig storage', () => {
     expect(createEmptyApiConfig(ApiProvider.IMAGE_2)).toEqual({
       provider: ApiProvider.IMAGE_2,
       apiKey: '',
-      baseUrl: '',
+      baseUrl: IMAGE_2_DEFAULT_BASE_URL,
       imageModel: IMAGE_2_DEFAULT_MODEL,
     });
+  });
+
+  it('defaults Image-2 base URL when omitted or blank', () => {
+    expect(normalizeApiConfig({
+      provider: ApiProvider.IMAGE_2,
+      apiKey: 'image-key',
+    }).baseUrl).toBe(IMAGE_2_DEFAULT_BASE_URL);
+
+    expect(normalizeApiConfig({
+      provider: ApiProvider.IMAGE_2,
+      apiKey: 'image-key',
+      baseUrl: '',
+    }).baseUrl).toBe(IMAGE_2_DEFAULT_BASE_URL);
   });
 
   it('migrates the old Image-2 model alias to gpt-image-2', () => {

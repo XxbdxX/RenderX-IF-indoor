@@ -4,6 +4,7 @@ export const API_CONFIG_STORAGE_KEY = 'renderx_api_config';
 export const API_CONFIGS_STORAGE_KEY = 'renderx_api_configs';
 export const LEGACY_GEMINI_API_KEY_STORAGE_KEY = 'renderx_gemini_api_key';
 export const YORO_DEFAULT_BASE_URL = 'https://api.yoro.ren';
+export const IMAGE_2_DEFAULT_BASE_URL = 'https://api.aixhan.com/v1';
 export const IMAGE_2_DEFAULT_MODEL = 'gpt-image-2';
 
 export type ApiProviderConfigMap = Partial<Record<ApiProvider, ApiProviderConfig>>;
@@ -27,7 +28,12 @@ export const getProviderLabel = (provider: ApiProvider): string => {
 export const createEmptyApiConfig = (provider: ApiProvider = ApiProvider.AI_STUDIO): ApiProviderConfig => ({
   provider,
   apiKey: '',
-  baseUrl: provider === ApiProvider.YORO_GEMINI ? YORO_DEFAULT_BASE_URL : '',
+  baseUrl:
+    provider === ApiProvider.YORO_GEMINI
+      ? YORO_DEFAULT_BASE_URL
+      : provider === ApiProvider.IMAGE_2
+        ? IMAGE_2_DEFAULT_BASE_URL
+        : '',
   imageModel: provider === ApiProvider.IMAGE_2 ? IMAGE_2_DEFAULT_MODEL : '',
 });
 
@@ -48,7 +54,7 @@ export const normalizeApiConfig = (value?: Partial<ApiProviderConfig> | null): A
       provider === ApiProvider.YORO_GEMINI
         ? (typeof value?.baseUrl === 'string' ? value.baseUrl.trim() : YORO_DEFAULT_BASE_URL)
         : provider === ApiProvider.IMAGE_2
-          ? (typeof value?.baseUrl === 'string' ? value.baseUrl.trim() : '')
+          ? ((typeof value?.baseUrl === 'string' ? value.baseUrl.trim() : '') || IMAGE_2_DEFAULT_BASE_URL)
         : '',
     imageModel:
       provider === ApiProvider.IMAGE_2

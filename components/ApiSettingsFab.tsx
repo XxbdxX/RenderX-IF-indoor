@@ -5,6 +5,7 @@ import {
   getConfiguredProviderConfig,
   getProviderLabel,
   hasConfiguredApi,
+  IMAGE_2_DEFAULT_BASE_URL,
   IMAGE_2_DEFAULT_MODEL,
   YORO_DEFAULT_BASE_URL,
 } from '../services/apiConfig';
@@ -177,13 +178,13 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={draftConfig.baseUrl || ''}
+                    value={draftConfig.baseUrl || IMAGE_2_DEFAULT_BASE_URL}
                     onChange={(event) => updateDraft({ baseUrl: event.target.value })}
-                    placeholder="https://your-relay.example.com/v1"
+                    placeholder={IMAGE_2_DEFAULT_BASE_URL}
                     className="w-full rounded-2xl border border-schiele-border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-schiele-rust"
                   />
                   <p className="mt-1 text-[11px] leading-5 text-schiele-secondary">
-                    填中转站的 OpenAI 兼容根地址，系统会调用 /images/edits。
+                    默认使用团队中转站根地址，系统会调用 /images/edits。
                   </p>
                 </div>
                 <div>

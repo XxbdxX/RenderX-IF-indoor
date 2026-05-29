@@ -20,7 +20,7 @@
 4. 选择 `AI Studio`、`Yoro` 或 `Image-2`
 5. 填入你自己的 API Key 并保存
 6. 如使用 `Yoro`，默认 Base URL 为 `https://api.yoro.ren`，按其中转站 Gemini 兼容接口填写对应 API Key
-7. 如使用 `Image-2`，填写中转站提供的 OpenAI 兼容 Base URL 和 API Key；Base URL 可填到 `/v1`，应用会通过同源代理调用 `/images/edits`
+7. 如使用 `Image-2`，默认 Base URL 为 `https://api.aixhan.com/v1`，只需填写中转站 API Key；应用会通过同源代理调用 `/images/edits`
 
 说明：
 
