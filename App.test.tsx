@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
+import { APP_VERSION } from './constants';
 import { getHistoryFromDb } from './services/historyDb';
 
 vi.mock('./services/historyDb', () => ({
@@ -37,7 +38,7 @@ describe('App API settings entry', () => {
   it('shows the current version and no longer renders a credit balance', async () => {
     render(<App />);
 
-    expect(await screen.findByText('V2.0.04')).toBeInTheDocument();
+    expect(await screen.findByText(APP_VERSION)).toBeInTheDocument();
     expect(screen.queryByText('5000')).not.toBeInTheDocument();
   });
 

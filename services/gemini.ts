@@ -43,6 +43,84 @@ const getFileExtension = (mimeType: string): string => {
   return 'png';
 };
 
+const IMAGE_2_MAX_PROXY_IMAGE_BYTES = 2.5 * 1024 * 1024;
+const IMAGE_2_COMPRESSION_DIMENSIONS = [2048, 1600, 1280];
+const IMAGE_2_COMPRESSION_QUALITIES = [0.86, 0.78, 0.7];
+
+const estimateBase64ByteLength = (base64: string): number => {
+  const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+  return Math.floor((base64.length * 3) / 4) - padding;
+};
+
+const loadImageElement = (dataUrl: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
+  const image = new Image();
+  image.onload = () => resolve(image);
+  image.onerror = () => reject(new Error('Unable to read Image-2 source image.'));
+  image.src = dataUrl;
+});
+
+const canvasToBlob = (canvas: HTMLCanvasElement, mimeType: string, quality: number): Promise<Blob | null> => {
+  return new Promise((resolve) => canvas.toBlob(resolve, mimeType, quality));
+};
+
+const blobToBase64Data = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = String(reader.result || '');
+    const match = result.match(/^data:.+;base64,(.+)$/);
+    if (match) {
+      resolve(match[1]);
+      return;
+    }
+    reject(new Error('Unable to encode compressed Image-2 source image.'));
+  };
+  reader.onerror = () => reject(new Error('Unable to encode compressed Image-2 source image.'));
+  reader.readAsDataURL(blob);
+});
+
+const compressImageForImage2Proxy = async (
+  base64: string,
+  mimeType: string,
+): Promise<{ base64: string; mimeType: string }> => {
+  if (estimateBase64ByteLength(base64) <= IMAGE_2_MAX_PROXY_IMAGE_BYTES) {
+    return { base64, mimeType };
+  }
+
+  try {
+    const image = await loadImageElement(`data:${mimeType};base64,${base64}`);
+    let bestBlob: Blob | null = null;
+
+    for (const maxDimension of IMAGE_2_COMPRESSION_DIMENSIONS) {
+      const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+      const width = Math.max(1, Math.round(image.width * scale));
+      const height = Math.max(1, Math.round(image.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (!context) continue;
+      context.drawImage(image, 0, 0, width, height);
+
+      for (const quality of IMAGE_2_COMPRESSION_QUALITIES) {
+        const blob = await canvasToBlob(canvas, 'image/jpeg', quality);
+        if (!blob) continue;
+        bestBlob = !bestBlob || blob.size < bestBlob.size ? blob : bestBlob;
+        if (blob.size <= IMAGE_2_MAX_PROXY_IMAGE_BYTES) {
+          return { base64: await blobToBase64Data(blob), mimeType: 'image/jpeg' };
+        }
+      }
+    }
+
+    if (bestBlob) {
+      return { base64: await blobToBase64Data(bestBlob), mimeType: 'image/jpeg' };
+    }
+  } catch {
+    return { base64, mimeType };
+  }
+
+  return { base64, mimeType };
+};
+
 const buildOpenAiImageSize = (request: GenerationRequest): string => {
   if (!request.aspectRatio || request.aspectRatio === 'free' || request.aspectRatio === 'original') {
     return 'auto';
@@ -212,11 +290,21 @@ const generateImage2Rendering = async (
   formData.append('model', model);
   formData.append('prompt', prompt);
   formData.append('size', size);
-  formData.append('image', base64ToBlob(request.imageBase64, request.imageMimeType), `primary.${getFileExtension(request.imageMimeType)}`);
+  const primaryImage = await compressImageForImage2Proxy(request.imageBase64, request.imageMimeType);
+  formData.append(
+    'image',
+    base64ToBlob(primaryImage.base64, primaryImage.mimeType),
+    `primary.${getFileExtension(primaryImage.mimeType)}`,
+  );
 
-  request.referenceImages?.forEach((ref) => {
-    formData.append('image', base64ToBlob(ref.base64, ref.mimeType), `reference-${ref.id}.${getFileExtension(ref.mimeType)}`);
-  });
+  for (const ref of request.referenceImages || []) {
+    const referenceImage = await compressImageForImage2Proxy(ref.base64, ref.mimeType);
+    formData.append(
+      'image',
+      base64ToBlob(referenceImage.base64, referenceImage.mimeType),
+      `reference-${ref.id}.${getFileExtension(referenceImage.mimeType)}`,
+    );
+  }
 
   const response = await fetch('/api/image2-edits', {
     method: 'POST',
