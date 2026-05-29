@@ -211,6 +211,91 @@ describe('generateRendering provider setup', () => {
     });
   });
 
+  it('reads Image-2 image data from output result responses', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      text: vi.fn().mockResolvedValue(JSON.stringify({
+        output: [
+          {
+            type: 'image_generation_call',
+            result: 'output-result-image-data',
+          },
+        ],
+      })),
+    } as any);
+
+    const result = await generateRendering(
+      {
+        ...baseRequest,
+        imageBase64: '',
+        imageMimeType: '',
+        prompt: 'a quiet gallery interior',
+        mode: GenerationMode.FREE,
+        aspectRatio: 'free',
+      },
+      {
+        provider: 'image-2',
+        apiKey: 'relay-api-key',
+        baseUrl: 'https://relay.example.com/v1',
+      } as any,
+    );
+
+    expect(result.imageUrl).toBe('data:image/png;base64,output-result-image-data');
+  });
+
+  it('surfaces Image-2 errors even when the relay returns status 200', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      text: vi.fn().mockResolvedValue(JSON.stringify({
+        error: {
+          message: 'model gpt-image-2 is not enabled',
+        },
+      })),
+    } as any);
+
+    await expect(generateRendering(
+      {
+        ...baseRequest,
+        prompt: 'render this lobby',
+      },
+      {
+        provider: 'image-2',
+        apiKey: 'relay-api-key',
+        baseUrl: 'https://relay.example.com/v1',
+      } as any,
+    )).rejects.toThrow('model gpt-image-2 is not enabled');
+  });
+
+  it('reads direct image responses from Image-2 relays', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
+      new Uint8Array([1, 2, 3]),
+      {
+        status: 200,
+        headers: { 'content-type': 'image/png' },
+      },
+    ) as any);
+
+    const result = await generateRendering(
+      {
+        ...baseRequest,
+        imageBase64: '',
+        imageMimeType: '',
+        prompt: 'a quiet gallery interior',
+        mode: GenerationMode.FREE,
+        aspectRatio: 'free',
+      },
+      {
+        provider: 'image-2',
+        apiKey: 'relay-api-key',
+        baseUrl: 'https://relay.example.com/v1',
+      } as any,
+    );
+
+    expect(result.imageUrl).toBe('data:image/png;base64,AQID');
+  });
+
   it('does not fall back to flash when the pro model is overloaded', async () => {
     generateContentMock.mockReset();
     generateContentMock.mockRejectedValue({ message: '503 UNAVAILABLE' });

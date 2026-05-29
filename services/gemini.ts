@@ -56,7 +56,87 @@ const buildOpenAiImageSize = (request: GenerationRequest): string => {
   return '1024x1024';
 };
 
+const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+  return btoa(binary);
+};
+
+const isImageUrl = (value: string): boolean => {
+  return value.startsWith('data:image/') || /^https?:\/\//i.test(value);
+};
+
+const findOpenAiImageValue = (value: any): { base64?: string; url?: string } | null => {
+  if (!value) return null;
+
+  if (typeof value === 'string') {
+    if (isImageUrl(value)) return { url: value };
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const result = findOpenAiImageValue(item);
+      if (result) return result;
+    }
+    return null;
+  }
+
+  if (typeof value !== 'object') return null;
+
+  const directBase64 =
+    value.b64_json ||
+    value.base64 ||
+    value.image_base64 ||
+    value.imageBase64 ||
+    (typeof value.image === 'string' && !isImageUrl(value.image) ? value.image : '') ||
+    (typeof value.result === 'string' && !isImageUrl(value.result) ? value.result : '');
+  if (directBase64) return { base64: directBase64 };
+
+  const directUrl =
+    value.url ||
+    value.image_url ||
+    value.imageUrl ||
+    (typeof value.image === 'string' && isImageUrl(value.image) ? value.image : '') ||
+    (typeof value.result === 'string' && isImageUrl(value.result) ? value.result : '');
+  if (directUrl) {
+    if (typeof directUrl === 'string') return { url: directUrl };
+    const nestedUrl = findOpenAiImageValue(directUrl);
+    if (nestedUrl) return nestedUrl;
+  }
+
+  const knownContainers = [
+    value.data,
+    value.images,
+    value.output,
+    value.content,
+    value.message?.content,
+    value.choices,
+  ];
+  for (const container of knownContainers) {
+    const result = findOpenAiImageValue(container);
+    if (result) return result;
+  }
+
+  return null;
+};
+
+const summarizePayload = (payload: any, fallbackText: string): string => {
+  const source = payload ? JSON.stringify(payload) : fallbackText;
+  return source.length > 500 ? `${source.slice(0, 500)}...` : source;
+};
+
 const normalizeOpenAiImageResponse = async (response: Response): Promise<GenerationResult> => {
+  const contentType = response.headers?.get?.('content-type') || '';
+
+  if (response.ok && contentType.toLowerCase().startsWith('image/')) {
+    const base64Image = arrayBufferToBase64(await response.arrayBuffer());
+    return { imageUrl: `data:${contentType.split(';')[0]};base64,${base64Image}` };
+  }
+
   const responseText = await response.text();
   let payload: any = null;
 
@@ -76,9 +156,18 @@ const normalizeOpenAiImageResponse = async (response: Response): Promise<Generat
     throw new Error(message);
   }
 
-  const firstImage = payload?.data?.[0] || payload?.images?.[0] || payload;
-  const base64Image = firstImage?.b64_json || firstImage?.base64 || firstImage?.image_base64;
-  const imageUrl = firstImage?.url || firstImage?.image_url;
+  if (payload?.error) {
+    const message =
+      payload.error?.message ||
+      (typeof payload.error === 'string' ? payload.error : '') ||
+      payload.message ||
+      'Image-2 request failed.';
+    throw new Error(message);
+  }
+
+  const imageValue = findOpenAiImageValue(payload);
+  const base64Image = imageValue?.base64;
+  const imageUrl = imageValue?.url;
 
   if (base64Image) {
     return { imageUrl: `data:image/png;base64,${base64Image}` };
@@ -87,7 +176,7 @@ const normalizeOpenAiImageResponse = async (response: Response): Promise<Generat
     return { imageUrl };
   }
 
-  throw new Error('Image-2 returned no image data.');
+  throw new Error(`Image-2 returned no image data. Response: ${summarizePayload(payload, responseText)}`);
 };
 
 const generateImage2Rendering = async (
