@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiProvider } from '../types';
 import {
   API_CONFIG_STORAGE_KEY,
+  API_CONFIGS_STORAGE_KEY,
   IMAGE_2_DEFAULT_MODEL,
   LEGACY_GEMINI_API_KEY_STORAGE_KEY,
   YORO_DEFAULT_BASE_URL,
   createEmptyApiConfig,
+  getConfiguredProviderConfig,
   loadStoredApiConfig,
+  loadStoredApiConfigStore,
   normalizeApiConfig,
+  saveApiConfigStore,
 } from './apiConfig';
 
 describe('apiConfig storage', () => {
@@ -107,5 +111,42 @@ describe('apiConfig storage', () => {
       baseUrl: '',
       imageModel: '',
     });
+  });
+
+  it('stores multiple provider configs and preserves the active provider', () => {
+    const saved = saveApiConfigStore({
+      activeProvider: ApiProvider.IMAGE_2,
+      configs: {
+        [ApiProvider.AI_STUDIO]: {
+          provider: ApiProvider.AI_STUDIO,
+          apiKey: 'banana-key',
+          vertexProject: '',
+          vertexLocation: '',
+          baseUrl: '',
+          imageModel: '',
+        },
+        [ApiProvider.IMAGE_2]: {
+          provider: ApiProvider.IMAGE_2,
+          apiKey: 'image-key',
+          vertexProject: '',
+          vertexLocation: '',
+          baseUrl: 'https://relay.example.com/v1',
+          imageModel: 'gpt-image-2',
+        },
+      },
+    });
+
+    expect(saved.activeProvider).toBe(ApiProvider.IMAGE_2);
+    expect(JSON.parse(localStorage.getItem(API_CONFIGS_STORAGE_KEY) || '{}')).toMatchObject({
+      activeProvider: ApiProvider.IMAGE_2,
+      configs: {
+        [ApiProvider.AI_STUDIO]: { apiKey: 'banana-key' },
+        [ApiProvider.IMAGE_2]: { apiKey: 'image-key' },
+      },
+    });
+
+    const loaded = loadStoredApiConfigStore();
+    expect(getConfiguredProviderConfig(loaded.configs, ApiProvider.AI_STUDIO).apiKey).toBe('banana-key');
+    expect(getConfiguredProviderConfig(loaded.configs, ApiProvider.IMAGE_2).baseUrl).toBe('https://relay.example.com/v1');
   });
 });

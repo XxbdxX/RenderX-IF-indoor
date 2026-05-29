@@ -22,14 +22,16 @@ import {
   saveHistoryItemToDirectory,
 } from './services/folderExport';
 import {
-  clearStoredApiConfig,
   createEmptyApiConfig,
+  getConfiguredProviderConfig,
+  getFirstConfiguredNanoBananaProvider,
   getMissingApiConfigMessage,
   getProviderLabel,
   hasConfiguredApi,
-  loadStoredApiConfig,
+  loadStoredApiConfigStore,
   normalizeApiConfig,
-  saveApiConfig,
+  saveApiConfigStore,
+  ApiProviderConfigMap,
 } from './services/apiConfig';
 import { APP_VERSION, MAX_CONCURRENT_REQUESTS, STYLE_LABELS, TIME_LABELS } from './constants';
 import { 
@@ -60,7 +62,8 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  const [apiConfig, setApiConfig] = useState<ApiProviderConfig>(() => createEmptyApiConfig());
+  const [apiConfigs, setApiConfigs] = useState<ApiProviderConfigMap>(() => ({}));
+  const [activeApiProvider, setActiveApiProvider] = useState<ApiProvider>(ApiProvider.AI_STUDIO);
   const [apiConfigDraft, setApiConfigDraft] = useState<ApiProviderConfig>(() => createEmptyApiConfig());
   const [isApiSettingsOpen, setIsApiSettingsOpen] = useState(false);
   const [exportDirectoryHandle, setExportDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
@@ -502,6 +505,7 @@ function App() {
   const resultSectionRef = useRef<HTMLDivElement>(null);
   const mainInputRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HistoryItem[]>([]);
+  const apiConfig = getConfiguredProviderConfig(apiConfigs, activeApiProvider);
   const hasApiAccess = hasConfiguredApi(apiConfig);
   const supportsFolderExport = isDirectoryPickerSupported();
 
@@ -550,8 +554,10 @@ function App() {
   // --- Effects ---
   useEffect(() => {
     const init = async () => {
-        const storedApiConfig = loadStoredApiConfig();
-        setApiConfig(storedApiConfig);
+        const storedApiConfigStore = loadStoredApiConfigStore();
+        const storedApiConfig = getConfiguredProviderConfig(storedApiConfigStore.configs, storedApiConfigStore.activeProvider);
+        setApiConfigs(storedApiConfigStore.configs);
+        setActiveApiProvider(storedApiConfigStore.activeProvider);
         setApiConfigDraft(storedApiConfig);
         setIsApiSettingsOpen(!hasConfiguredApi(storedApiConfig));
 
@@ -588,12 +594,12 @@ function App() {
   }, [successMsg]);
 
   const openApiSettings = () => {
-    setApiConfigDraft(apiConfig);
+    setApiConfigDraft(getConfiguredProviderConfig(apiConfigs, activeApiProvider));
     setIsApiSettingsOpen(true);
   };
 
   const closeApiSettings = () => {
-    setApiConfigDraft(apiConfig);
+    setApiConfigDraft(getConfiguredProviderConfig(apiConfigs, activeApiProvider));
     setIsApiSettingsOpen(false);
   };
 
@@ -603,12 +609,17 @@ function App() {
 
   const handleClearApiConfig = () => {
     const clearedConfig = createEmptyApiConfig(apiConfigDraft.provider);
-    setApiConfig(clearedConfig);
+    const nextConfigs = {
+      ...apiConfigs,
+      [apiConfigDraft.provider]: clearedConfig,
+    };
+    setApiConfigs(nextConfigs);
+    setActiveApiProvider(apiConfigDraft.provider);
     setApiConfigDraft(clearedConfig);
-    clearStoredApiConfig();
+    saveApiConfigStore({ activeProvider: apiConfigDraft.provider, configs: nextConfigs });
     setIsApiSettingsOpen(true);
     setError(null);
-    setSuccessMsg('本地 API 配置已清除');
+    setSuccessMsg(`${getProviderLabel(apiConfigDraft.provider)} API 配置已清除`);
   };
 
   const handleSaveApiConfig = () => {
@@ -618,12 +629,50 @@ function App() {
       return;
     }
 
-    const savedConfig = saveApiConfig(normalizedConfig);
-    setApiConfig(savedConfig);
+    const nextConfigs = {
+      ...apiConfigs,
+      [normalizedConfig.provider]: normalizedConfig,
+    };
+    const savedStore = saveApiConfigStore({
+      activeProvider: normalizedConfig.provider,
+      configs: nextConfigs,
+    });
+    const savedConfig = getConfiguredProviderConfig(savedStore.configs, savedStore.activeProvider);
+    setApiConfigs(savedStore.configs);
+    setActiveApiProvider(savedStore.activeProvider);
     setApiConfigDraft(savedConfig);
     setIsApiSettingsOpen(false);
     setError(null);
     setSuccessMsg(`${getProviderLabel(savedConfig.provider)} API 已保存到本地浏览器`);
+  };
+
+  const handleApiProviderSwitch = (nextProvider: ApiProvider) => {
+    const nextConfig = getConfiguredProviderConfig(apiConfigs, nextProvider);
+    if (!hasConfiguredApi(nextConfig)) {
+      setApiConfigDraft(nextConfig);
+      setIsApiSettingsOpen(true);
+      setError(getMissingApiConfigMessage(nextProvider));
+      return;
+    }
+
+    const savedStore = saveApiConfigStore({
+      activeProvider: nextProvider,
+      configs: apiConfigs,
+    });
+    setApiConfigs(savedStore.configs);
+    setActiveApiProvider(savedStore.activeProvider);
+    setApiConfigDraft(getConfiguredProviderConfig(savedStore.configs, savedStore.activeProvider));
+    setError(null);
+    setSuccessMsg(`已切换到 ${getProviderLabel(nextProvider)}`);
+  };
+
+  const handleToggleImageProvider = () => {
+    if (activeApiProvider === ApiProvider.IMAGE_2) {
+      handleApiProviderSwitch(getFirstConfiguredNanoBananaProvider(apiConfigs, activeApiProvider) || ApiProvider.AI_STUDIO);
+      return;
+    }
+
+    handleApiProviderSwitch(ApiProvider.IMAGE_2);
   };
 
   const handleChooseExportFolder = async () => {
@@ -1062,6 +1111,8 @@ function App() {
                 hasApiAccess={hasApiAccess}
                 apiProvider={apiConfig.provider}
                 imageModel={apiConfig.imageModel}
+                apiConfigs={apiConfigs}
+                onToggleImageProvider={handleToggleImageProvider}
             />
           </div>
         </div>
@@ -1143,6 +1194,7 @@ function App() {
 
       <ApiSettingsFab
         savedConfig={apiConfig}
+        savedConfigs={apiConfigs}
         draftConfig={apiConfigDraft}
         isOpen={isApiSettingsOpen}
         onOpen={openApiSettings}

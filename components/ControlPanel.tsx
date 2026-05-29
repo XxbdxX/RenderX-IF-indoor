@@ -2,7 +2,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ApiProvider, RenderStyle, TimeOfDay, GenerationRequest, ImageResolution, GenerationMode, ModelVersion, ThinkingMode } from '../types';
 import { MAX_CONCURRENT_REQUESTS, STYLE_ICONS, TIME_ICONS, STYLE_LABELS, TIME_LABELS } from '../constants';
-import { IMAGE_2_DEFAULT_MODEL } from '../services/apiConfig';
+import {
+  ApiProviderConfigMap,
+  getConfiguredProviderConfig,
+  getFirstConfiguredNanoBananaProvider,
+  getProviderLabel,
+  hasConfiguredApi,
+  IMAGE_2_DEFAULT_MODEL,
+} from '../services/apiConfig';
 
 interface ControlPanelProps {
   request: GenerationRequest;
@@ -14,6 +21,8 @@ interface ControlPanelProps {
   hasApiAccess: boolean;
   apiProvider: ApiProvider;
   imageModel?: string;
+  apiConfigs?: ApiProviderConfigMap;
+  onToggleImageProvider?: () => void;
 }
 
 interface SavedPrompt {
@@ -30,10 +39,24 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   activeHeavyRequests,
   hasApiAccess,
   apiProvider,
-  imageModel
+  imageModel,
+  apiConfigs = {},
+  onToggleImageProvider,
 }) => {
   const { mode } = request;
   const isImage2Provider = apiProvider === ApiProvider.IMAGE_2;
+  const image2Configured = hasConfiguredApi(getConfiguredProviderConfig(apiConfigs, ApiProvider.IMAGE_2));
+  const nanoProvider = getFirstConfiguredNanoBananaProvider(apiConfigs, apiProvider);
+  const nanoConfigured = Boolean(nanoProvider);
+  const providerSwitchLabel = isImage2Provider ? 'Image-2' : 'NanoBanana';
+  const providerSwitchDetail = isImage2Provider
+    ? (imageModel || IMAGE_2_DEFAULT_MODEL)
+    : nanoProvider
+      ? getProviderLabel(nanoProvider)
+      : getProviderLabel(apiProvider);
+  const nextProviderHint = isImage2Provider
+    ? (nanoConfigured ? `切换到 ${getProviderLabel(nanoProvider!)}` : '先配置 NanoBanana')
+    : (image2Configured ? '切换到 Image-2' : '先配置 Image-2');
   
   // Prompt Cache Ref
   const promptCache = useRef<Record<GenerationMode, string>>({
@@ -219,18 +242,36 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       </div>
 
       <div className="mb-4 rounded-2xl border border-schiele-border bg-white/75 shadow-sm overflow-hidden">
-        <button
-          type="button"
-          aria-label={`${isRenderSettingsOpen ? '收起' : '展开'}渲染设置`}
-          onClick={() => setIsRenderSettingsOpen((prev) => !prev)}
-          className="w-full px-4 py-3 flex items-center justify-between hover:bg-white transition-colors"
-        >
-          <span className="flex flex-col items-start text-left">
-            <span className="text-[10px] font-bold text-schiele-secondary uppercase">渲染设置</span>
-            <span className="text-sm font-bold text-schiele-ink">{renderSettingsSummary}</span>
-          </span>
-          <i className={`fas fa-chevron-${isRenderSettingsOpen ? 'up' : 'down'} text-xs text-schiele-secondary`}></i>
-        </button>
+        <div className="flex items-stretch">
+          <button
+            type="button"
+            aria-label={`${isRenderSettingsOpen ? '收起' : '展开'}渲染设置`}
+            onClick={() => setIsRenderSettingsOpen((prev) => !prev)}
+            className="min-w-0 flex-1 px-4 py-3 flex items-center justify-between hover:bg-white transition-colors"
+          >
+            <span className="min-w-0 flex flex-col items-start text-left">
+              <span className="text-[10px] font-bold text-schiele-secondary uppercase">渲染设置</span>
+              <span className="text-sm font-bold text-schiele-ink truncate">{renderSettingsSummary}</span>
+            </span>
+            <i className={`fas fa-chevron-${isRenderSettingsOpen ? 'up' : 'down'} ml-3 text-xs text-schiele-secondary`}></i>
+          </button>
+          <button
+            type="button"
+            aria-label="切换渲染通道"
+            onClick={onToggleImageProvider}
+            title={nextProviderHint}
+            className={`w-[126px] shrink-0 border-l border-schiele-border px-3 py-2 text-left transition-colors hover:bg-white ${
+              isImage2Provider ? 'bg-blue-50/60' : 'bg-orange-50/60'
+            }`}
+          >
+            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-schiele-secondary">
+              <i className={`fas ${isImage2Provider ? 'fa-image' : 'fa-wand-magic-sparkles'} text-[9px]`}></i>
+              通道
+            </span>
+            <span className="mt-0.5 block truncate text-xs font-bold text-schiele-ink">{providerSwitchLabel}</span>
+            <span className="block truncate text-[9px] font-mono text-schiele-secondary">{providerSwitchDetail}</span>
+          </button>
+        </div>
 
         {isRenderSettingsOpen && (
           <div className="px-4 pb-4 space-y-4 border-t border-schiele-border/70 bg-white/80 animate-fade-in">
@@ -404,7 +445,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center mb-3 shadow-lg text-lg text-white">
                     <i className="fas fa-robot"></i>
                 </div>
-                <h3 className="font-bold text-schiele-ink mb-1 text-sm">NanoBanana Pro 直连</h3>
+                <h3 className="font-bold text-schiele-ink mb-1 text-sm">{isImage2Provider ? 'Image-2 直连' : 'NanoBanana 直连'}</h3>
                 <p className="text-[10px] text-schiele-secondary leading-relaxed px-4">
                     跳过预设风格。像聊天一样直接告诉 AI 您想要什么。
                 </p>

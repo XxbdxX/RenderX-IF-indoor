@@ -1,9 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import { ApiProvider, ApiProviderConfig } from '../types';
-import { getProviderLabel, hasConfiguredApi, IMAGE_2_DEFAULT_MODEL, YORO_DEFAULT_BASE_URL } from '../services/apiConfig';
+import {
+  ApiProviderConfigMap,
+  createEmptyApiConfig,
+  getConfiguredProviderConfig,
+  getProviderLabel,
+  hasConfiguredApi,
+  IMAGE_2_DEFAULT_MODEL,
+  YORO_DEFAULT_BASE_URL,
+} from '../services/apiConfig';
 
 interface ApiSettingsFabProps {
   savedConfig: ApiProviderConfig;
+  savedConfigs: ApiProviderConfigMap;
   draftConfig: ApiProviderConfig;
   isOpen: boolean;
   onOpen: () => void;
@@ -15,6 +24,7 @@ interface ApiSettingsFabProps {
 
 export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
   savedConfig,
+  savedConfigs,
   draftConfig,
   isOpen,
   onOpen,
@@ -53,6 +63,10 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
 
   const updateDraft = (partial: Partial<ApiProviderConfig>) => {
     onDraftChange({ ...draftConfig, ...partial });
+  };
+
+  const selectDraftProvider = (provider: ApiProvider) => {
+    onDraftChange(getConfiguredProviderConfig(savedConfigs, provider) || createEmptyApiConfig(provider));
   };
 
   const apiKeyLabel =
@@ -107,30 +121,22 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
               { value: ApiProvider.IMAGE_2, label: 'Image-2' },
             ].map((option) => {
               const isActive = draftConfig.provider === option.value;
+              const isSaved = hasConfiguredApi(getConfiguredProviderConfig(savedConfigs, option.value));
               return (
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() =>
-                    updateDraft({
-                      provider: option.value,
-                      vertexLocation: option.value === ApiProvider.VERTEX_AI ? draftConfig.vertexLocation || '' : '',
-                      baseUrl:
-                        option.value === ApiProvider.YORO_GEMINI
-                          ? draftConfig.baseUrl || YORO_DEFAULT_BASE_URL
-                          : option.value === ApiProvider.IMAGE_2
-                            ? draftConfig.baseUrl || ''
-                            : '',
-                      imageModel: option.value === ApiProvider.IMAGE_2 ? draftConfig.imageModel || IMAGE_2_DEFAULT_MODEL : '',
-                    })
-                  }
-                  className={`rounded-2xl px-3 py-2.5 text-xs font-bold transition-all ${
+                  onClick={() => selectDraftProvider(option.value)}
+                  className={`relative rounded-2xl px-3 py-2.5 text-xs font-bold transition-all ${
                     isActive
                       ? 'bg-white text-schiele-ink shadow-sm'
                       : 'text-schiele-secondary hover:text-schiele-ink'
                   }`}
                 >
                   {option.label}
+                  {isSaved && (
+                    <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                  )}
                 </button>
               );
             })}

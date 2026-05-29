@@ -1,9 +1,23 @@
 import { ApiProvider, ApiProviderConfig } from '../types';
 
 export const API_CONFIG_STORAGE_KEY = 'renderx_api_config';
+export const API_CONFIGS_STORAGE_KEY = 'renderx_api_configs';
 export const LEGACY_GEMINI_API_KEY_STORAGE_KEY = 'renderx_gemini_api_key';
 export const YORO_DEFAULT_BASE_URL = 'https://api.yoro.ren';
 export const IMAGE_2_DEFAULT_MODEL = 'gpt-image-2';
+
+export type ApiProviderConfigMap = Partial<Record<ApiProvider, ApiProviderConfig>>;
+
+export interface ApiConfigStore {
+  activeProvider: ApiProvider;
+  configs: ApiProviderConfigMap;
+}
+
+export const NANO_BANANA_PROVIDERS = [
+  ApiProvider.AI_STUDIO,
+  ApiProvider.YORO_GEMINI,
+  ApiProvider.VERTEX_AI,
+];
 
 export const getProviderLabel = (provider: ApiProvider): string => {
   if (provider === ApiProvider.VERTEX_AI) return 'Vertex AI';
@@ -62,6 +76,69 @@ export const hasConfiguredApi = (config: ApiProviderConfig): boolean => {
     : Boolean(config.apiKey.trim());
 };
 
+export const getConfiguredProviderConfig = (
+  configs: ApiProviderConfigMap,
+  provider: ApiProvider,
+): ApiProviderConfig => {
+  return normalizeApiConfig(configs[provider] || createEmptyApiConfig(provider));
+};
+
+export const normalizeApiConfigStore = (value?: Partial<ApiConfigStore> | null): ApiConfigStore => {
+  const configs: ApiProviderConfigMap = {};
+  Object.values(ApiProvider).forEach((provider) => {
+    const normalized = normalizeApiConfig(value?.configs?.[provider] || createEmptyApiConfig(provider));
+    configs[provider] = normalized;
+  });
+
+  const activeProvider = value?.activeProvider && Object.values(ApiProvider).includes(value.activeProvider)
+    ? value.activeProvider
+    : ApiProvider.AI_STUDIO;
+
+  return {
+    activeProvider,
+    configs,
+  };
+};
+
+export const getFirstConfiguredNanoBananaProvider = (
+  configs: ApiProviderConfigMap,
+  preferredProvider?: ApiProvider,
+): ApiProvider | null => {
+  const orderedProviders = [
+    ...(preferredProvider && preferredProvider !== ApiProvider.IMAGE_2 ? [preferredProvider] : []),
+    ...NANO_BANANA_PROVIDERS,
+  ].filter((provider, index, array) => array.indexOf(provider) === index);
+
+  return orderedProviders.find((provider) => hasConfiguredApi(getConfiguredProviderConfig(configs, provider))) || null;
+};
+
+export const loadStoredApiConfigStore = (): ApiConfigStore => {
+  const storedConfigStore = localStorage.getItem(API_CONFIGS_STORAGE_KEY);
+  if (storedConfigStore) {
+    try {
+      return normalizeApiConfigStore(JSON.parse(storedConfigStore) as Partial<ApiConfigStore>);
+    } catch {
+      localStorage.removeItem(API_CONFIGS_STORAGE_KEY);
+    }
+  }
+
+  const legacyConfig = loadStoredApiConfig();
+  return normalizeApiConfigStore({
+    activeProvider: legacyConfig.provider,
+    configs: {
+      [legacyConfig.provider]: legacyConfig,
+    },
+  });
+};
+
+export const saveApiConfigStore = (store: ApiConfigStore): ApiConfigStore => {
+  const normalized = normalizeApiConfigStore(store);
+  localStorage.setItem(API_CONFIGS_STORAGE_KEY, JSON.stringify(normalized));
+  localStorage.setItem(API_CONFIG_STORAGE_KEY, JSON.stringify(getConfiguredProviderConfig(normalized.configs, normalized.activeProvider)));
+  localStorage.removeItem(LEGACY_GEMINI_API_KEY_STORAGE_KEY);
+  return normalized;
+};
+
 export const loadStoredApiConfig = (): ApiProviderConfig => {
   const storedConfig = localStorage.getItem(API_CONFIG_STORAGE_KEY);
   const legacyApiKey = localStorage.getItem(LEGACY_GEMINI_API_KEY_STORAGE_KEY);
@@ -98,6 +175,7 @@ export const saveApiConfig = (config: ApiProviderConfig): ApiProviderConfig => {
 
 export const clearStoredApiConfig = (): void => {
   localStorage.removeItem(API_CONFIG_STORAGE_KEY);
+  localStorage.removeItem(API_CONFIGS_STORAGE_KEY);
   localStorage.removeItem(LEGACY_GEMINI_API_KEY_STORAGE_KEY);
 };
 
