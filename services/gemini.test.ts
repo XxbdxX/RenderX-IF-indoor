@@ -121,12 +121,11 @@ describe('generateRendering provider setup', () => {
     });
     expect(googleGenAiMock).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/image2-edits',
+      'https://relay.example.com/v1/images/edits',
       expect.objectContaining({
         method: 'POST',
         headers: {
-          'X-RenderX-Image-Base-Url': 'https://relay.example.com/v1',
-          'X-RenderX-Image-Api-Key': 'relay-api-key',
+          Authorization: 'Bearer relay-api-key',
         },
         body: expect.any(FormData),
       }),
@@ -167,13 +166,12 @@ describe('generateRendering provider setup', () => {
       modelUsed: 'gpt-image-2',
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/image2-edits',
+      'https://relay.example.com/v1/images/generations',
       expect.objectContaining({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-RenderX-Image-Base-Url': 'https://relay.example.com/v1',
-          'X-RenderX-Image-Api-Key': 'relay-api-key',
+          Authorization: 'Bearer relay-api-key',
         },
         body: expect.any(String),
       }),

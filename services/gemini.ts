@@ -134,6 +134,24 @@ const buildOpenAiImageSize = (request: GenerationRequest): string => {
   return '1024x1024';
 };
 
+const stripTrailingSlashes = (value: string): string => value.replace(/\/+$/, '');
+
+const getImage2EditEndpoint = (baseUrl: string): string => {
+  const normalizedBaseUrl = stripTrailingSlashes(baseUrl.trim());
+  return normalizedBaseUrl.endsWith('/images/edits')
+    ? normalizedBaseUrl
+    : `${normalizedBaseUrl}/images/edits`;
+};
+
+const getImage2GenerationEndpoint = (baseUrl: string): string => {
+  const normalizedBaseUrl = stripTrailingSlashes(baseUrl.trim());
+  if (normalizedBaseUrl.endsWith('/images/generations')) return normalizedBaseUrl;
+  if (normalizedBaseUrl.endsWith('/images/edits')) {
+    return normalizedBaseUrl.replace(/\/images\/edits$/, '/images/generations');
+  }
+  return `${normalizedBaseUrl}/images/generations`;
+};
+
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   let binary = '';
   const bytes = new Uint8Array(buffer);
@@ -278,12 +296,11 @@ const generateImage2Rendering = async (
   const hasSourceImage = Boolean(request.imageBase64 && request.imageMimeType);
 
   if (!hasSourceImage) {
-    const response = await fetch('/api/image2-edits', {
+    const response = await fetch(getImage2GenerationEndpoint(baseUrl), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-RenderX-Image-Base-Url': baseUrl,
-        'X-RenderX-Image-Api-Key': apiKey,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({ model, prompt, size }),
     });
@@ -310,11 +327,10 @@ const generateImage2Rendering = async (
     );
   }
 
-  const response = await fetch('/api/image2-edits', {
+  const response = await fetch(getImage2EditEndpoint(baseUrl), {
     method: 'POST',
     headers: {
-      'X-RenderX-Image-Base-Url': baseUrl,
-      'X-RenderX-Image-Api-Key': apiKey,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: formData,
   });
