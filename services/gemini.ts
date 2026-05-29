@@ -562,25 +562,16 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
       return await generateImage2Rendering(request, apiConfig, finalPrompt);
     }
 
-    const ai = new GoogleGenAI(
-      apiConfig.provider === ApiProvider.VERTEX_AI
+    const ai = new GoogleGenAI({
+      apiKey,
+      ...(apiConfig.provider === ApiProvider.YORO_GEMINI && apiConfig.baseUrl?.trim()
         ? {
-            vertexai: true,
-            apiKey,
-            ...(apiConfig.vertexProject?.trim() ? { project: apiConfig.vertexProject.trim() } : {}),
-            ...(apiConfig.vertexLocation?.trim() ? { location: apiConfig.vertexLocation.trim() } : {}),
+            httpOptions: {
+              baseUrl: apiConfig.baseUrl.trim(),
+            },
           }
-        : {
-            apiKey,
-            ...(apiConfig.provider === ApiProvider.YORO_GEMINI && apiConfig.baseUrl?.trim()
-              ? {
-                  httpOptions: {
-                    baseUrl: apiConfig.baseUrl.trim(),
-                  },
-                }
-              : {}),
-          },
-    );
+        : {}),
+    });
     
     // Prepare Config
     const imageConfig: any = {};

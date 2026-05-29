@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import { ApiProvider, ApiProviderConfig } from '../types';
 import {
   ApiProviderConfigMap,
-  createEmptyApiConfig,
   getConfiguredProviderConfig,
   getProviderLabel,
   hasConfiguredApi,
@@ -66,22 +65,18 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
   };
 
   const selectDraftProvider = (provider: ApiProvider) => {
-    onDraftChange(getConfiguredProviderConfig(savedConfigs, provider) || createEmptyApiConfig(provider));
+    onDraftChange(getConfiguredProviderConfig(savedConfigs, provider));
   };
 
   const apiKeyLabel =
-    draftConfig.provider === ApiProvider.VERTEX_AI
-      ? 'Vertex API Key'
-      : draftConfig.provider === ApiProvider.YORO_GEMINI
+    draftConfig.provider === ApiProvider.YORO_GEMINI
         ? 'Yoro API Key'
         : draftConfig.provider === ApiProvider.IMAGE_2
           ? 'Image-2 API Key'
           : 'AI Studio API Key';
 
   const apiKeyPlaceholder =
-    draftConfig.provider === ApiProvider.VERTEX_AI
-      ? '粘贴 Vertex AI API Key'
-      : draftConfig.provider === ApiProvider.YORO_GEMINI
+    draftConfig.provider === ApiProvider.YORO_GEMINI
         ? '粘贴 Yoro API Key'
         : draftConfig.provider === ApiProvider.IMAGE_2
           ? '粘贴中转站 API Key'
@@ -113,10 +108,9 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
             </button>
           </div>
 
-          <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-schiele-bg/80 p-1.5 sm:grid-cols-4">
+          <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl bg-schiele-bg/80 p-1.5">
             {[
               { value: ApiProvider.AI_STUDIO, label: 'AI Studio' },
-              { value: ApiProvider.VERTEX_AI, label: 'Vertex AI' },
               { value: ApiProvider.YORO_GEMINI, label: 'Yoro' },
               { value: ApiProvider.IMAGE_2, label: 'Image-2' },
             ].map((option) => {
@@ -207,34 +201,6 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
               </div>
             )}
 
-            {draftConfig.provider === ApiProvider.VERTEX_AI && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.18em] text-schiele-secondary">
-                    Project ID
-                  </label>
-                  <input
-                    type="text"
-                    value={draftConfig.vertexProject || ''}
-                    onChange={(event) => updateDraft({ vertexProject: event.target.value })}
-                    placeholder="可选"
-                    className="w-full rounded-2xl border border-schiele-border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-schiele-rust"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.18em] text-schiele-secondary">
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    value={draftConfig.vertexLocation || ''}
-                    onChange={(event) => updateDraft({ vertexLocation: event.target.value })}
-                    placeholder="global"
-                    className="w-full rounded-2xl border border-schiele-border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-schiele-rust"
-                  />
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="mt-5 flex items-center justify-between gap-3 border-t border-schiele-border/70 pt-4">

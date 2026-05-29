@@ -16,11 +16,9 @@ export interface ApiConfigStore {
 export const NANO_BANANA_PROVIDERS = [
   ApiProvider.AI_STUDIO,
   ApiProvider.YORO_GEMINI,
-  ApiProvider.VERTEX_AI,
 ];
 
 export const getProviderLabel = (provider: ApiProvider): string => {
-  if (provider === ApiProvider.VERTEX_AI) return 'Vertex AI';
   if (provider === ApiProvider.YORO_GEMINI) return 'Yoro Gemini';
   if (provider === ApiProvider.IMAGE_2) return 'Image-2';
   return 'AI Studio';
@@ -29,17 +27,13 @@ export const getProviderLabel = (provider: ApiProvider): string => {
 export const createEmptyApiConfig = (provider: ApiProvider = ApiProvider.AI_STUDIO): ApiProviderConfig => ({
   provider,
   apiKey: '',
-  vertexProject: '',
-  vertexLocation: '',
   baseUrl: provider === ApiProvider.YORO_GEMINI ? YORO_DEFAULT_BASE_URL : '',
   imageModel: provider === ApiProvider.IMAGE_2 ? IMAGE_2_DEFAULT_MODEL : '',
 });
 
 export const normalizeApiConfig = (value?: Partial<ApiProviderConfig> | null): ApiProviderConfig => {
   const provider =
-    value?.provider === ApiProvider.VERTEX_AI
-      ? ApiProvider.VERTEX_AI
-      : value?.provider === ApiProvider.YORO_GEMINI
+    value?.provider === ApiProvider.YORO_GEMINI
         ? ApiProvider.YORO_GEMINI
         : value?.provider === ApiProvider.IMAGE_2
           ? ApiProvider.IMAGE_2
@@ -50,11 +44,6 @@ export const normalizeApiConfig = (value?: Partial<ApiProviderConfig> | null): A
   return {
     provider,
     apiKey: typeof value?.apiKey === 'string' ? value.apiKey.trim() : '',
-    vertexProject: typeof value?.vertexProject === 'string' ? value.vertexProject.trim() : '',
-    vertexLocation:
-      provider === ApiProvider.VERTEX_AI
-        ? (typeof value?.vertexLocation === 'string' ? value.vertexLocation.trim() : '')
-        : '',
     baseUrl:
       provider === ApiProvider.YORO_GEMINI
         ? (typeof value?.baseUrl === 'string' ? value.baseUrl.trim() : YORO_DEFAULT_BASE_URL)
