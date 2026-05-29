@@ -10,8 +10,8 @@ const createRequest = (overrides: Record<string, unknown> = {}) => ({
   prompt: '',
   style: RenderStyle.PHOTOREALISTIC,
   timeOfDay: TimeOfDay.DAY,
-  aspectRatio: '1:1',
-  resolution: ImageResolution.RES_1K,
+  aspectRatio: 'original',
+  resolution: ImageResolution.RES_2K,
   modelVersion: ModelVersion.PRO,
   mode: GenerationMode.AUTO,
   compositionLock: false,
@@ -58,7 +58,7 @@ describe('ControlPanel generation settings layout', () => {
     render(<StatefulPanel />);
 
     expect(screen.getByRole('button', { name: '展开渲染设置' })).toBeInTheDocument();
-    expect(screen.getByText('PRO · 1K · 1:1 · 深度')).toBeInTheDocument();
+    expect(screen.getByText('PRO · 2K · 原图 · 深度')).toBeInTheDocument();
     expect(screen.queryByText('NanoBanana PRO')).not.toBeInTheDocument();
   });
 
@@ -100,7 +100,7 @@ describe('ControlPanel generation settings layout', () => {
       />,
     );
 
-    expect(screen.getByText('image-2 · 1K · 1:1')).toBeInTheDocument();
+    expect(screen.getByText('image-2 · 2K · 原图')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '展开渲染设置' }));
 
