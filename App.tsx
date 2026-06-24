@@ -550,6 +550,31 @@ function App() {
     return tags;
   };
 
+  function handleReuseHistoryConfig(item: HistoryItem) {
+    setRequest({
+      imageBase64: '',
+      imageMimeType: '',
+      prompt: item.prompt || '',
+      style: item.style || RenderStyle.SCANDINAVIAN,
+      timeOfDay: item.timeOfDay || TimeOfDay.LATE_AFTERNOON,
+      aspectRatio: item.aspectRatio || 'original',
+      resolution: item.resolution || ImageResolution.RES_2K,
+      modelVersion: item.modelVersion || ModelVersion.FLASH,
+      mode: item.mode || GenerationMode.AUTO,
+      isAuto: item.isAuto ?? item.mode === GenerationMode.AUTO,
+      compositionLock: item.compositionLock ?? false,
+      schemeLock: item.schemeLock ?? true,
+      referenceImages: [],
+      referenceNote: item.referenceNote || '',
+      commercialEnhancement: item.commercialEnhancement ?? false,
+      landscapeEnhancement: item.landscapeEnhancement ?? false,
+      thinkingMode: item.thinkingMode,
+    });
+    setSuccessMsg('已套用历史参数');
+    promptCache.current[item.mode || GenerationMode.AUTO] = item.prompt || '';
+    mainInputRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }
+
   // --- Effects ---
   useEffect(() => {
     const init = async () => {
@@ -1155,6 +1180,16 @@ function App() {
                                         )}
                                     </div>
                                     <div className="flex gap-2">
+                                        <button
+                                          onClick={() => {
+                                            setShowHistoryModal(false);
+                                            handleReuseHistoryConfig(item);
+                                          }}
+                                          className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border border-gray-200 text-schiele-ink hover:text-white hover:bg-schiele-ink transition-colors"
+                                          title="套用此参数"
+                                        >
+                                          <i className="fas fa-sliders text-xs"></i>
+                                        </button>
                                         <button onClick={() => { setShowHistoryModal(false); handleUseResultAsInput(item); }} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg border border-gray-200 text-schiele-ink hover:text-white hover:bg-schiele-ink transition-colors" title="使用此底图">
                                             <i className="fas fa-reply text-xs"></i>
                                         </button>
