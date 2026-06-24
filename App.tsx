@@ -490,7 +490,7 @@ function App() {
       timeOfDay: TimeOfDay.LATE_AFTERNOON,
       aspectRatio: 'original',
       resolution: ImageResolution.RES_2K,
-      modelVersion: ModelVersion.PRO,
+      modelVersion: ModelVersion.FLASH,
       mode: GenerationMode.AUTO, 
       isAuto: true, 
       compositionLock: false, 
@@ -499,7 +499,7 @@ function App() {
       referenceNote: '',
       commercialEnhancement: false,
       landscapeEnhancement: false,
-      thinkingMode: ThinkingMode.DEEP,
+      thinkingMode: ThinkingMode.DEFAULT,
    });
 
   const resultSectionRef = useRef<HTMLDivElement>(null);
