@@ -1,139 +1,67 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ApiProvider } from '../types';
 import {
-  API_CONFIG_STORAGE_KEY,
-  API_CONFIGS_STORAGE_KEY,
-  IMAGE_2_DEFAULT_BASE_URL,
-  IMAGE_2_DEFAULT_MODEL,
-  LEGACY_GEMINI_API_KEY_STORAGE_KEY,
-  YORO_DEFAULT_BASE_URL,
   createEmptyApiConfig,
   getConfiguredProviderConfig,
-  loadStoredApiConfig,
+  getFirstConfiguredNanoBananaProvider,
+  hasConfiguredApi,
   loadStoredApiConfigStore,
   normalizeApiConfig,
   saveApiConfigStore,
+  YORO_DEFAULT_BASE_URL,
 } from './apiConfig';
 
-describe('apiConfig storage', () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
-  it('migrates old Vertex configs back to AI Studio', () => {
-    expect(normalizeApiConfig({ provider: 'vertex-ai' as any, apiKey: 'vertex-key' })).toEqual({
-      provider: ApiProvider.AI_STUDIO,
-      apiKey: 'vertex-key',
-      baseUrl: '',
-      imageModel: '',
-    });
-  });
-
-  it('preserves the Yoro base URL and defaults it when omitted', () => {
-    expect(normalizeApiConfig({ provider: ApiProvider.YORO_GEMINI, apiKey: 'yoro-key' })).toEqual({
-      provider: ApiProvider.YORO_GEMINI,
-      apiKey: 'yoro-key',
-      baseUrl: YORO_DEFAULT_BASE_URL,
-      imageModel: '',
-    });
-
+describe('api config helpers', () => {
+  it('defaults to AI Studio and preserves Yoro base URL', () => {
+    expect(createEmptyApiConfig()).toEqual({ provider: ApiProvider.AI_STUDIO, apiKey: '', baseUrl: '' });
     expect(createEmptyApiConfig(ApiProvider.YORO_GEMINI)).toEqual({
       provider: ApiProvider.YORO_GEMINI,
       apiKey: '',
       baseUrl: YORO_DEFAULT_BASE_URL,
-      imageModel: '',
     });
   });
 
-  it('preserves Image-2 base URL and defaults its model', () => {
-    expect(normalizeApiConfig({
-      provider: ApiProvider.IMAGE_2,
-      apiKey: 'image-key',
-      baseUrl: 'https://relay.example.com/v1/',
-    })).toEqual({
-      provider: ApiProvider.IMAGE_2,
-      apiKey: 'image-key',
-      baseUrl: 'https://relay.example.com/v1/',
-      imageModel: IMAGE_2_DEFAULT_MODEL,
-    });
-
-    expect(createEmptyApiConfig(ApiProvider.IMAGE_2)).toEqual({
-      provider: ApiProvider.IMAGE_2,
-      apiKey: '',
-      baseUrl: IMAGE_2_DEFAULT_BASE_URL,
-      imageModel: IMAGE_2_DEFAULT_MODEL,
-    });
+  it('requires base URL for Yoro but only API key for AI Studio', () => {
+    expect(hasConfiguredApi(normalizeApiConfig({ provider: ApiProvider.AI_STUDIO, apiKey: 'key' }))).toBe(true);
+    expect(hasConfiguredApi(normalizeApiConfig({ provider: ApiProvider.YORO_GEMINI, apiKey: 'key', baseUrl: '' }))).toBe(false);
+    expect(hasConfiguredApi(normalizeApiConfig({ provider: ApiProvider.YORO_GEMINI, apiKey: 'key', baseUrl: 'https://relay.example.com' }))).toBe(true);
   });
 
-  it('defaults Image-2 base URL when omitted or blank', () => {
-    expect(normalizeApiConfig({
-      provider: ApiProvider.IMAGE_2,
-      apiKey: 'image-key',
-    }).baseUrl).toBe(IMAGE_2_DEFAULT_BASE_URL);
-
-    expect(normalizeApiConfig({
-      provider: ApiProvider.IMAGE_2,
-      apiKey: 'image-key',
-      baseUrl: '',
-    }).baseUrl).toBe(IMAGE_2_DEFAULT_BASE_URL);
-  });
-
-  it('migrates the old Image-2 model alias to gpt-image-2', () => {
-    expect(normalizeApiConfig({
-      provider: ApiProvider.IMAGE_2,
-      apiKey: 'image-key',
-      baseUrl: 'https://relay.example.com/v1',
-      imageModel: 'image-2',
-    })).toEqual({
-      provider: ApiProvider.IMAGE_2,
-      apiKey: 'image-key',
-      baseUrl: 'https://relay.example.com/v1',
-      imageModel: IMAGE_2_DEFAULT_MODEL,
-    });
-  });
-
-  it('migrates the legacy Gemini key when the new config is empty', () => {
-    localStorage.setItem(API_CONFIG_STORAGE_KEY, JSON.stringify({ provider: ApiProvider.AI_STUDIO, apiKey: '' }));
-    localStorage.setItem(LEGACY_GEMINI_API_KEY_STORAGE_KEY, 'legacy-key');
-
-    expect(loadStoredApiConfig()).toEqual({
-      provider: ApiProvider.AI_STUDIO,
-      apiKey: 'legacy-key',
-      baseUrl: '',
-      imageModel: '',
-    });
-  });
-
-  it('stores multiple provider configs and preserves the active provider', () => {
-    const saved = saveApiConfigStore({
-      activeProvider: ApiProvider.IMAGE_2,
+  it('falls back to AI Studio when the stored active provider is unsupported', () => {
+    localStorage.setItem('renderx_api_configs', JSON.stringify({
+      activeProvider: 'removed-provider',
       configs: {
-        [ApiProvider.AI_STUDIO]: {
-          provider: ApiProvider.AI_STUDIO,
-          apiKey: 'banana-key',
-          baseUrl: '',
-          imageModel: '',
-        },
-        [ApiProvider.IMAGE_2]: {
-          provider: ApiProvider.IMAGE_2,
-          apiKey: 'image-key',
-          baseUrl: 'https://relay.example.com/v1',
-          imageModel: 'gpt-image-2',
-        },
+        'removed-provider': { provider: 'removed-provider', apiKey: 'removed-key' },
+        [ApiProvider.YORO_GEMINI]: { provider: ApiProvider.YORO_GEMINI, apiKey: 'yoro-key', baseUrl: 'https://relay.example.com/v1' },
       },
-    });
-
-    expect(saved.activeProvider).toBe(ApiProvider.IMAGE_2);
-    expect(JSON.parse(localStorage.getItem(API_CONFIGS_STORAGE_KEY) || '{}')).toMatchObject({
-      activeProvider: ApiProvider.IMAGE_2,
-      configs: {
-        [ApiProvider.AI_STUDIO]: { apiKey: 'banana-key' },
-        [ApiProvider.IMAGE_2]: { apiKey: 'image-key' },
-      },
-    });
+    }));
 
     const loaded = loadStoredApiConfigStore();
-    expect(getConfiguredProviderConfig(loaded.configs, ApiProvider.AI_STUDIO).apiKey).toBe('banana-key');
-    expect(getConfiguredProviderConfig(loaded.configs, ApiProvider.IMAGE_2).baseUrl).toBe('https://relay.example.com/v1');
+    expect(loaded.activeProvider).toBe(ApiProvider.AI_STUDIO);
+    expect((loaded.configs as any)['removed-provider']).toBeUndefined();
+    expect(getConfiguredProviderConfig(loaded.configs, ApiProvider.YORO_GEMINI).baseUrl).toBe('https://relay.example.com/v1');
+  });
+
+  it('saves only supported provider configs', () => {
+    const saved = saveApiConfigStore({
+      activeProvider: ApiProvider.YORO_GEMINI,
+      configs: {
+        [ApiProvider.AI_STUDIO]: { provider: ApiProvider.AI_STUDIO, apiKey: 'studio-key' },
+        [ApiProvider.YORO_GEMINI]: { provider: ApiProvider.YORO_GEMINI, apiKey: 'yoro-key', baseUrl: 'https://relay.example.com/v1' },
+      },
+    });
+
+    expect(saved.activeProvider).toBe(ApiProvider.YORO_GEMINI);
+    expect(JSON.parse(localStorage.getItem('renderx_api_config') || '{}')).toMatchObject({
+      provider: ApiProvider.YORO_GEMINI,
+      apiKey: 'yoro-key',
+      baseUrl: 'https://relay.example.com/v1',
+    });
+  });
+
+  it('finds the first configured NanoBanana provider', () => {
+    expect(getFirstConfiguredNanoBananaProvider({
+      [ApiProvider.AI_STUDIO]: { provider: ApiProvider.AI_STUDIO, apiKey: 'studio-key' },
+    })).toBe(ApiProvider.AI_STUDIO);
   });
 });

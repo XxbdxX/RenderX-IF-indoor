@@ -42,15 +42,13 @@ export enum ThinkingMode {
 
 export enum ApiProvider {
   AI_STUDIO = 'google-ai-studio',
-  YORO_GEMINI = 'yoro-gemini',
-  IMAGE_2 = 'image-2'
+  YORO_GEMINI = 'yoro-gemini'
 }
 
 export interface ApiProviderConfig {
   provider: ApiProvider;
   apiKey: string;
   baseUrl?: string;
-  imageModel?: string;
 }
 
 export interface ReferenceImage {

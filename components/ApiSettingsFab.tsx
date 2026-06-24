@@ -5,8 +5,6 @@ import {
   getConfiguredProviderConfig,
   getProviderLabel,
   hasConfiguredApi,
-  IMAGE_2_DEFAULT_BASE_URL,
-  IMAGE_2_DEFAULT_MODEL,
   YORO_DEFAULT_BASE_URL,
 } from '../services/apiConfig';
 
@@ -72,16 +70,12 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
   const apiKeyLabel =
     draftConfig.provider === ApiProvider.YORO_GEMINI
         ? 'Yoro API Key'
-        : draftConfig.provider === ApiProvider.IMAGE_2
-          ? 'Image-2 API Key'
-          : 'AI Studio API Key';
+        : 'AI Studio API Key';
 
   const apiKeyPlaceholder =
     draftConfig.provider === ApiProvider.YORO_GEMINI
         ? '粘贴 Yoro API Key'
-        : draftConfig.provider === ApiProvider.IMAGE_2
-          ? '粘贴中转站 API Key'
-          : '粘贴 AI Studio API Key';
+        : '粘贴 AI Studio API Key';
 
   return (
     <div ref={containerRef} className="fixed bottom-6 right-6 z-[1600] flex flex-col items-end gap-3">
@@ -109,11 +103,10 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
             </button>
           </div>
 
-          <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl bg-schiele-bg/80 p-1.5">
+          <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-schiele-bg/80 p-1.5">
             {[
               { value: ApiProvider.AI_STUDIO, label: 'AI Studio' },
               { value: ApiProvider.YORO_GEMINI, label: 'Yoro' },
-              { value: ApiProvider.IMAGE_2, label: 'Image-2' },
             ].map((option) => {
               const isActive = draftConfig.provider === option.value;
               const isSaved = hasConfiguredApi(getConfiguredProviderConfig(savedConfigs, option.value));
@@ -167,38 +160,6 @@ export const ApiSettingsFab: React.FC<ApiSettingsFabProps> = ({
                 <p className="mt-1 text-[11px] leading-5 text-schiele-secondary">
                   使用 Gemini 兼容根地址，例如 {YORO_DEFAULT_BASE_URL}
                 </p>
-              </div>
-            )}
-
-            {draftConfig.provider === ApiProvider.IMAGE_2 && (
-              <div className="space-y-3">
-                <div>
-                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.18em] text-schiele-secondary">
-                    Base URL
-                  </label>
-                  <input
-                    type="text"
-                    value={draftConfig.baseUrl || IMAGE_2_DEFAULT_BASE_URL}
-                    onChange={(event) => updateDraft({ baseUrl: event.target.value })}
-                    placeholder={IMAGE_2_DEFAULT_BASE_URL}
-                    className="w-full rounded-2xl border border-schiele-border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-schiele-rust"
-                  />
-                  <p className="mt-1 text-[11px] leading-5 text-schiele-secondary">
-                    默认使用团队中转站根地址，系统会调用 /images/edits。
-                  </p>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.18em] text-schiele-secondary">
-                    Model
-                  </label>
-                  <input
-                    type="text"
-                    value={draftConfig.imageModel || IMAGE_2_DEFAULT_MODEL}
-                    onChange={(event) => updateDraft({ imageModel: event.target.value })}
-                    placeholder={IMAGE_2_DEFAULT_MODEL}
-                    className="w-full rounded-2xl border border-schiele-border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-schiele-rust"
-                  />
-                </div>
               </div>
             )}
 

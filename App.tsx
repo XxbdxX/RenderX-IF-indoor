@@ -24,7 +24,6 @@ import {
 import {
   createEmptyApiConfig,
   getConfiguredProviderConfig,
-  getFirstConfiguredNanoBananaProvider,
   getMissingApiConfigMessage,
   getProviderLabel,
   hasConfiguredApi,
@@ -666,15 +665,6 @@ function App() {
     setSuccessMsg(`已切换到 ${getProviderLabel(nextProvider)}`);
   };
 
-  const handleToggleImageProvider = () => {
-    if (activeApiProvider === ApiProvider.IMAGE_2) {
-      handleApiProviderSwitch(getFirstConfiguredNanoBananaProvider(apiConfigs, activeApiProvider) || ApiProvider.AI_STUDIO);
-      return;
-    }
-
-    handleApiProviderSwitch(ApiProvider.IMAGE_2);
-  };
-
   const handleChooseExportFolder = async () => {
     if (!supportsFolderExport) {
       setError('当前浏览器不支持直接选择导出文件夹，请使用 Chromium 浏览器。');
@@ -827,14 +817,8 @@ function App() {
   ) => {
     const effectiveSourceBase64 = overrideSourceBase64 || sourceImageBase64;
     const effectiveSourceMime = overrideSourceMime || sourceImageMime || 'image/png';
-    const isImage2TextGeneration =
-      !isUpscaleOnly &&
-      !effectiveSourceBase64 &&
-      request.mode === GenerationMode.FREE &&
-      apiConfig.provider === ApiProvider.IMAGE_2;
     
-    if (!effectiveSourceBase64 && !isImage2TextGeneration) { setError("请先上传底图"); return; }
-    if (isImage2TextGeneration && !request.prompt.trim()) { setError("请先输入文生图提示词"); return; }
+    if (!effectiveSourceBase64) { setError("请先上传底图"); return; }
     if (!hasApiAccess) {
       setIsApiSettingsOpen(true);
       setError(getMissingApiConfigMessage(apiConfig.provider));
@@ -851,9 +835,7 @@ function App() {
     let effectiveAspectRatio = request.aspectRatio;
     let enforceOriginalAspect = false;
     if (effectiveAspectRatio === 'original') {
-        if (isImage2TextGeneration) {
-            effectiveAspectRatio = 'free';
-        } else if (!sourceImageBase64 || !sourceAspectRatio) {
+        if (!sourceImageBase64 || !sourceAspectRatio) {
             setError("请先上传底图才能使用跟随原图");
             return;
         } else {
@@ -867,7 +849,7 @@ function App() {
     const isHeavy = isHeavyTask(requestResolution);
 
     // Save Original Image for comparison
-    const originalUrl = isImage2TextGeneration ? '' : (overrideOriginalUrl || `data:${effectiveSourceMime};base64,${effectiveSourceBase64}`);
+    const originalUrl = overrideOriginalUrl || `data:${effectiveSourceMime};base64,${effectiveSourceBase64}`;
 
     const placeholderItem = {
         id: tempId,
@@ -1110,9 +1092,6 @@ function App() {
                 activeHeavyRequests={activeHeavyRequests}
                 hasApiAccess={hasApiAccess}
                 apiProvider={apiConfig.provider}
-                imageModel={apiConfig.imageModel}
-                apiConfigs={apiConfigs}
-                onToggleImageProvider={handleToggleImageProvider}
             />
           </div>
         </div>
