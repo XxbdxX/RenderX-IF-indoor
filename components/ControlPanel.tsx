@@ -104,6 +104,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       setRequest((prev) => ({
           ...prev,
           modelVersion: nextModel,
+          resolution: nextModel === ModelVersion.LITE ? ImageResolution.RES_1K : prev.resolution,
           thinkingMode: nextModel === ModelVersion.PRO ? ThinkingMode.DEEP : (prev.thinkingMode || ThinkingMode.DEFAULT),
       }));
   };
@@ -136,7 +137,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     : request.modelVersion === ModelVersion.LITE
       ? 'N2 Lite'
       : 'N2';
-  const renderSettingsSummary = `${renderModelSummary} · ${request.resolution} · ${aspectRatioSummary} · ${thinkingSummary}`;
+  const effectiveResolution = request.modelVersion === ModelVersion.LITE ? ImageResolution.RES_1K : request.resolution;
+  const renderSettingsSummary = `${renderModelSummary} · ${effectiveResolution} · ${aspectRatioSummary} · ${thinkingSummary}`;
 
   return (
     <div className={`flex flex-col h-full p-6 md:p-8 rounded-[24px] shadow-paper border transition-all duration-500 relative ${
@@ -315,26 +317,36 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </div>
 
             <div>
-              <div className="mb-2"><label className="text-xs font-bold text-schiele-secondary uppercase">分辨率</label></div>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="text-xs font-bold text-schiele-secondary uppercase">分辨率</label>
+                {request.modelVersion === ModelVersion.LITE && <span className="text-[10px] text-gray-400">Lite 仅支持 1K</span>}
+              </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { value: ImageResolution.RES_1K, label: '1K', icon: 'fa-image' },
                   { value: ImageResolution.RES_2K, label: '2K', icon: 'fa-photo-video' },
                   { value: ImageResolution.RES_4K, label: '4K', icon: 'fa-expand' },
-                ].map((resolution) => (
+                ].map((resolution) => {
+                  const isLiteUnsupported = request.modelVersion === ModelVersion.LITE && resolution.value !== ImageResolution.RES_1K;
+                  return (
                   <button
                     key={resolution.value}
-                    onClick={() => updateRequest('resolution', resolution.value)}
+                    onClick={() => !isLiteUnsupported && updateRequest('resolution', resolution.value)}
+                    disabled={isLiteUnsupported}
+                    title={isLiteUnsupported ? 'NanoBanana 2 Lite 仅支持 1K' : undefined}
                     className={`py-2 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                      request.resolution === resolution.value
+                      effectiveResolution === resolution.value
                         ? 'border-schiele-ink bg-schiele-ink text-white'
-                        : 'border-schiele-border bg-white text-gray-500 hover:border-gray-400'
+                        : isLiteUnsupported
+                          ? 'border-schiele-border bg-gray-100 text-gray-300 cursor-not-allowed'
+                          : 'border-schiele-border bg-white text-gray-500 hover:border-gray-400'
                     }`}
                   >
                     <i className={`fas ${resolution.icon}`}></i>
                     <span>{resolution.label}</span>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

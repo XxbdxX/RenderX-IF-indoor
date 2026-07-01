@@ -93,6 +93,9 @@ describe('ControlPanel generation settings layout', () => {
     expect(screen.getByRole('button', { name: '深入' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /NanoBanana 2 Lite/i }));
-    expect(screen.getByText('N2 Lite · 2K · 原图 · 深入')).toBeInTheDocument();
+    expect(screen.getByText('N2 Lite · 1K · 原图 · 深入')).toBeInTheDocument();
+    expect(screen.getByText('Lite 仅支持 1K')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2K' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '4K' })).toBeDisabled();
   });
 });

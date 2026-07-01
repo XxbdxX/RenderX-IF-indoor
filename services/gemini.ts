@@ -6,6 +6,7 @@ import {
   GenerationMode,
   GenerationRequest,
   GenerationResult,
+  ImageResolution,
   ModelVersion,
   RenderStyle,
   ThinkingMode,
@@ -292,8 +293,12 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
         imageConfig.aspectRatio = request.aspectRatio;
     }
 
-    // imageSize is supported for both gemini-3-pro-image-preview and gemini-3.1-flash-image-preview
-    imageConfig.imageSize = request.isUpscale ? "4K" : request.resolution;
+    // NanoBanana 2 Lite currently rejects 2K/4K imageSize; keep it at 1K defensively.
+    imageConfig.imageSize = request.modelVersion === ModelVersion.LITE
+      ? ImageResolution.RES_1K
+      : request.isUpscale
+        ? "4K"
+        : request.resolution;
 
     const requestConfig: any = {
       imageConfig: imageConfig,

@@ -78,6 +78,7 @@ describe('generateRendering provider setup', () => {
       {
         ...baseRequest,
         modelVersion: ModelVersion.LITE,
+        resolution: ImageResolution.RES_2K,
       },
       {
         provider: 'google-ai-studio',
@@ -88,6 +89,7 @@ describe('generateRendering provider setup', () => {
     expect(generateContentMock).toHaveBeenCalledWith(
       expect.objectContaining({ model: 'gemini-3.1-flash-lite-image' }),
     );
+    expect(generateContentMock.mock.calls[0][0].config.imageConfig.imageSize).toBe('1K');
   });
 
   it('passes a custom base URL when provider is yoro-gemini', async () => {
