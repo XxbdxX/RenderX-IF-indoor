@@ -266,7 +266,12 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
     // Determine Model
     const proModelId = 'gemini-3-pro-image-preview';
     const flashModelId = 'gemini-3.1-flash-image-preview';
-    const preferredModelId = request.modelVersion === ModelVersion.PRO ? proModelId : flashModelId;
+    const liteModelId = 'gemini-3.1-flash-lite-image';
+    const preferredModelId = request.modelVersion === ModelVersion.PRO
+      ? proModelId
+      : request.modelVersion === ModelVersion.LITE
+        ? liteModelId
+        : flashModelId;
 
 
     const ai = new GoogleGenAI({
@@ -294,7 +299,7 @@ export const generateRendering = async (request: GenerationRequest, apiConfig: A
       imageConfig: imageConfig,
     };
 
-    if (request.modelVersion === ModelVersion.FLASH) {
+    if (request.modelVersion === ModelVersion.FLASH || request.modelVersion === ModelVersion.LITE) {
       if (request.thinkingMode === ThinkingMode.FAST) {
         requestConfig.thinkingConfig = { thinkingLevel: 'minimal' };
       } else if (request.thinkingMode === ThinkingMode.DEEP) {

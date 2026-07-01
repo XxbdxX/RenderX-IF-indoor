@@ -131,7 +131,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         ? '深入'
         : '默认';
 
-  const renderModelSummary = request.modelVersion === ModelVersion.PRO ? 'PRO' : 'N2';
+  const renderModelSummary = request.modelVersion === ModelVersion.PRO
+    ? 'PRO'
+    : request.modelVersion === ModelVersion.LITE
+      ? 'N2 Lite'
+      : 'N2';
   const renderSettingsSummary = `${renderModelSummary} · ${request.resolution} · ${aspectRatioSummary} · ${thinkingSummary}`;
 
   return (
@@ -232,10 +236,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="px-4 pb-4 space-y-4 border-t border-schiele-border/70 bg-white/80 animate-fade-in">
             <div className="pt-4">
               <div className="mb-2"><label className="text-xs font-bold text-schiele-secondary uppercase">模型选择</label></div>
-                <div className="flex gap-2 p-1 bg-schiele-bg/50 rounded-xl border border-schiele-border">
+                <div className="grid grid-cols-1 gap-2 p-1 bg-schiele-bg/50 rounded-xl border border-schiele-border sm:grid-cols-3">
                   <button
                     onClick={() => handleModelVersionChange(ModelVersion.PRO)}
-                    className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    className={`py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
                       request.modelVersion === ModelVersion.PRO
                         ? 'bg-white text-schiele-ink shadow-sm'
                         : 'text-gray-400 hover:text-gray-600'
@@ -249,7 +253,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   </button>
                   <button
                     onClick={() => handleModelVersionChange(ModelVersion.FLASH)}
-                    className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    className={`py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
                       request.modelVersion === ModelVersion.FLASH
                         ? 'bg-white text-schiele-ink shadow-sm'
                         : 'text-gray-400 hover:text-gray-600'
@@ -261,13 +265,27 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                       <span className={`text-[8px] font-mono ${request.modelVersion === ModelVersion.FLASH ? 'text-schiele-secondary' : 'text-gray-300'}`}>gemini-3.1-flash-image-preview</span>
                     </span>
                   </button>
+                  <button
+                    onClick={() => handleModelVersionChange(ModelVersion.LITE)}
+                    className={`py-1.5 px-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      request.modelVersion === ModelVersion.LITE
+                        ? 'bg-white text-schiele-ink shadow-sm'
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    <i className={`fas fa-feather self-start mt-0.5 ${request.modelVersion === ModelVersion.LITE ? 'text-emerald-500' : ''}`}></i>
+                    <span className="flex flex-col items-start leading-tight text-left">
+                      <span>NanoBanana 2 Lite</span>
+                      <span className={`text-[8px] font-mono ${request.modelVersion === ModelVersion.LITE ? 'text-schiele-secondary' : 'text-gray-300'}`}>gemini-3.1-flash-lite-image</span>
+                    </span>
+                  </button>
                 </div>
             </div>
 
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <label className="text-xs font-bold text-schiele-secondary uppercase">思考强度</label>
-                {request.modelVersion === ModelVersion.FLASH && <span className="text-[10px] text-gray-400">NanoBanana 2 可调</span>}
+                {request.modelVersion !== ModelVersion.PRO && <span className="text-[10px] text-gray-400">NanoBanana 2 / Lite 可调</span>}
               </div>
               {request.modelVersion === ModelVersion.PRO ? (
                 <div className="rounded-xl border border-schiele-border bg-schiele-bg/60 px-3 py-2 text-xs font-bold text-schiele-secondary">

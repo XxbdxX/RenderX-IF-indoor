@@ -25,7 +25,8 @@ export enum ImageResolution {
 
 export enum ModelVersion {
   PRO = 'Pro',
-  FLASH = 'Flash'
+  FLASH = 'Flash',
+  LITE = 'Lite'
 }
 
 export enum GenerationMode {

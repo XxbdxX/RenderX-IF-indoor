@@ -73,6 +73,23 @@ describe('generateRendering provider setup', () => {
     );
   });
 
+  it('uses the flash-lite image model when lite is selected', async () => {
+    await generateRendering(
+      {
+        ...baseRequest,
+        modelVersion: ModelVersion.LITE,
+      },
+      {
+        provider: 'google-ai-studio',
+        apiKey: 'ai-studio-key',
+      } as any,
+    );
+
+    expect(generateContentMock).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'gemini-3.1-flash-lite-image' }),
+    );
+  });
+
   it('passes a custom base URL when provider is yoro-gemini', async () => {
     await generateRendering(
       {

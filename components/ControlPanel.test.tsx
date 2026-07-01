@@ -75,20 +75,24 @@ describe('ControlPanel generation settings layout', () => {
 
     expect(screen.getByText('NanoBanana PRO')).toBeInTheDocument();
     expect(screen.getByText('NanoBanana 2')).toBeInTheDocument();
+    expect(screen.getByText('NanoBanana 2 Lite')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '4K' })).toBeInTheDocument();
     expect(screen.getByText('16:9')).toBeInTheDocument();
   });
 
-  it('shows fixed deep thinking for PRO and switchable thinking modes for NanoBanana 2', () => {
+  it('shows fixed deep thinking for PRO and switchable thinking modes for NanoBanana 2 / Lite', () => {
     render(<StatefulPanel />);
 
     fireEvent.click(screen.getByRole('button', { name: '展开渲染设置' }));
     expect(screen.getByText('PRO 固定高思考')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /NanoBanana 2/i }));
+    fireEvent.click(screen.getByRole('button', { name: /NanoBanana 2gemini-3\.1-flash-image-preview/i }));
 
     expect(screen.getByRole('button', { name: '默认' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '快速' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '深入' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /NanoBanana 2 Lite/i }));
+    expect(screen.getByText('N2 Lite · 2K · 原图 · 深入')).toBeInTheDocument();
   });
 });

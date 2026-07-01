@@ -80,7 +80,13 @@ export const buildExportFileName = (meta: ExportFileMeta): string => {
   const timestamp = `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}-${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}`;
   const mode = sanitizeToken(meta.mode);
   const resolution = meta.resolution ? sanitizeToken(meta.resolution) : 'img';
-  const model = meta.modelVersion === ModelVersion.PRO ? 'pro' : meta.modelVersion === ModelVersion.FLASH ? 'n2' : 'std';
+  const model = meta.modelVersion === ModelVersion.PRO
+    ? 'pro'
+    : meta.modelVersion === ModelVersion.FLASH
+      ? 'n2'
+      : meta.modelVersion === ModelVersion.LITE
+        ? 'n2-lite'
+        : 'std';
   const suffix = sanitizeToken(meta.id).slice(0, 8) || 'result';
 
   return `renderx-${timestamp}-${mode}-${resolution}-${model}-${suffix}.png`;
